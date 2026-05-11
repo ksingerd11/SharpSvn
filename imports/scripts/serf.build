@@ -52,6 +52,9 @@
       <FilterFile file="${serfDir}\SConstruct">
         <filterchain>
           <replacestring from="allowed_values=('x86'," to="allowed_values=('${sconsPlatform}', 'x86'," />
+          <replacestring from="allowed_values=('14.3'," to="allowed_values=('14.5', '14.3'," />
+          <replacestring from="                      '2022' : '14.3'," to="                      '2022' : '14.3',
+                      '2026' : '14.5'," />
           <replacestring from="if unknown:" to="if unknown and 1 == 0:" />
         </filterchain>
       </FilterFile>

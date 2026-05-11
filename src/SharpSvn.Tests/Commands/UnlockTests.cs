@@ -25,33 +25,32 @@ using SharpSvn.TestBuilder;
 
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Summary description for UnlockTest.
+/// </summary>
+[TestClass]
+public class UnlockTests : TestBase
 {
-    /// <summary>
-    /// Summary description for UnlockTest.
-    /// </summary>
-    [TestClass]
-    public class UnlockTests : TestBase
+    [TestMethod]
+    public void BasicUnlockTest()
     {
-        [TestMethod]
-        public void BasicUnlockTest()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Greek);
-            string WcPath = sbox.Wc;
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Greek);
+        string WcPath = sbox.Wc;
 
 
-            string filepath = Path.Combine(WcPath, "iota");
+        string filepath = Path.Combine(WcPath, "iota");
 
-            this.RunCommand("svn", "lock " + filepath);
+        this.RunCommand("svn", "lock " + filepath);
 
-            char lockStatus;
-            lockStatus = this.RunCommand("svn", "status " + filepath)[5];
-            Assert.That(lockStatus, Is.EqualTo('K'), "file not locked");
+        char lockStatus;
+        lockStatus = this.RunCommand("svn", "status " + filepath)[5];
+        Assert.That(lockStatus, Is.EqualTo('K'), "file not locked");
 
-            this.Client.Unlock(filepath);
+        this.Client.Unlock(filepath);
 
-            Assert.That(this.RunCommand("svn", "status " + filepath).Length == 0, "file not unlocked");
-        }
+        Assert.That(this.RunCommand("svn", "status " + filepath).Length == 0, "file not unlocked");
     }
 }

@@ -22,46 +22,47 @@ using Assert = NUnit.Framework.Assert;
 using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+[TestClass]
+public class GetSuggestedMergeSourcesTests : TestBase
 {
-    [TestClass]
-    public class GetSuggestedMergeSourcesTests : TestBase
+    [TestMethod]
+    public void MergeSources_VerifyCollabNetRepos()
     {
-        [TestMethod]
-        public void MergeSources_VerifyCollabNetRepos()
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri CollabReposUri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+
+        string dir = sbox.GetTempDir();
+        SvnMergeSourcesCollection msc;
+
+        SvnTarget me = new SvnUriTarget(new Uri(CollabReposUri, "trunk/"), 16);
+        Assert.That(Client.GetSuggestedMergeSources(me, out msc));
+
+        Assert.That(msc, Is.Not.Null);
+        Assert.That(msc.Count, Is.EqualTo(3));
+        foreach (SvnMergeSource ms in msc)
         {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri CollabReposUri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+            Collection<SvnMergesEligibleEventArgs> info;
 
-            string dir = sbox.GetTempDir();
-            SvnMergeSourcesCollection msc;
+            Assert.That(Client.GetMergesEligible(me, ms.Uri, out info));
+            Assert.That(info, Is.Not.Null);
 
-            SvnTarget me = new SvnUriTarget(new Uri(CollabReposUri, "trunk/"), 16);
-            Assert.That(Client.GetSuggestedMergeSources(me, out msc));
-
-            Assert.That(msc, Is.Not.Null);
-            Assert.That(msc.Count, Is.EqualTo(3));
-            foreach (SvnMergeSource ms in msc)
+            if (ms.Uri == new Uri(CollabReposUri, "trunk"))
             {
-                Collection<SvnMergesEligibleEventArgs> info;
-
-                Assert.That(Client.GetMergesEligible(me, ms.Uri, out info));
-                Assert.That(info, Is.Not.Null);
-
-                if (ms.Uri == new Uri(CollabReposUri, "trunk"))
-                {
-                    Assert.That(info.Count, Is.EqualTo(1));
-                }
-                else if (ms.Uri == new Uri(CollabReposUri, "branches/a"))
-                {
-                    Assert.That(info.Count, Is.EqualTo(0));
-                }
-                else if (ms.Uri == new Uri(CollabReposUri, "branches/b"))
-                {
-                    Assert.That(info.Count, Is.EqualTo(0));
-                }
-                else
-                    Assert.That(false, "Strange branch found");
+                Assert.That(info.Count, Is.EqualTo(1));
+            }
+            else if (ms.Uri == new Uri(CollabReposUri, "branches/a"))
+            {
+                Assert.That(info.Count, Is.EqualTo(0));
+            }
+            else if (ms.Uri == new Uri(CollabReposUri, "branches/b"))
+            {
+                Assert.That(info.Count, Is.EqualTo(0));
+            }
+            else
+            {
+                Assert.That(false, "Strange branch found");
             }
         }
     }

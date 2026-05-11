@@ -33,3 +33,48 @@ https://nuget.org/packages/SharpSvn
 
 This package contains x86, x64 and ARM64 binaries that are automatically selected by the NuGet tool for you.
 We are no longer building .Net 2.0 compatible versions as the build support for that is not available on GitHub.
+
+## Local Fetch NuGet package
+
+Fetch consumes the local SharpSvn build through the repo-local `lib\SharpSvn` NuGet feed. From the
+Fetch repository root, build and pack the x64 .NET 10 package with:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\Fetch.Vendored\SharpSvn\nuspec\Pack-LocalSharpSvn.ps1
+```
+
+The script builds `ReleaseCore|x64` and writes `lib\SharpSvn\SharpSvn.1.14005.390-fetch.1.nupkg`.
+Pass `-NoBuild` to repack from existing `src\SharpSvn\bin\x64\ReleaseCore` outputs.
+
+## Building from source
+
+SharpSvn's C++/CLI project needs a generated native dependency tree under `imports\release`.
+That tree contains the Subversion/APR/Serf/LibSSH2 headers, libraries, gettext `.po` files, and
+runtime dependency binaries used by the Visual Studio projects.
+
+Before building `src\SharpSvn.sln`, install the required command-line build tools globally:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\imports\Install-BuildTools.ps1
+```
+
+This installs NAnt 0.92 from NuGet into a user-global tools folder, and installs the winget
+packages `StrawberryPerl.StrawberryPerl` and `Python.Python.2`.
+Open a fresh shell after install so the updated `PATH` is visible, then build the native imports.
+From a regular command prompt or PowerShell, let NAnt bootstrap the Visual Studio environment:
+
+```cmd
+cd imports
+nant -buildfile:Default.build x64
+```
+
+From an already-initialized Visual Studio Developer Command Prompt, this direct form also works:
+
+```cmd
+cd imports
+nant -buildfile:Default.build /D:platform=x64 build
+```
+
+Use `win32` or `ARM64` instead of `x64` when building those platforms. If `imports\release` has
+not been generated, `SharpSvn.vcxproj` stops before its custom build steps and reports the missing
+native import path.

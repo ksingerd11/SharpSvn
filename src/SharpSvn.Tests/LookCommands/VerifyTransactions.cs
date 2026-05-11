@@ -27,108 +27,103 @@ using System.CodeDom.Compiler;
 using System.IO;
 using SharpSvn;
 
-namespace SharpSvn.Tests.LookCommands
+namespace SharpSvn.Tests.LookCommands;
+
+[TestClass]
+public class VerifyTransactions : HookTestBase
 {
-    [TestClass]
-    public class VerifyTransactions : HookTestBase
+    void OnPreCommit(object sender, ReposHookEventArgs e)
     {
-        void OnPreCommit(object sender, ReposHookEventArgs e)
+        using SvnLookClient cl = new SvnLookClient();
+        SvnChangeInfoArgs ia = new SvnChangeInfoArgs();
+
+        SvnChangeInfoEventArgs i;
+        Assert.That(cl.GetChangeInfo(e.HookArgs.LookOrigin, ia, out i));
+
+        Assert.That(i.Revision, Is.LessThan(0L));
+        Assert.That(i.Author, Is.EqualTo(Environment.UserName));
+        Assert.That(i.LogMessage, Is.EqualTo("Blaat!\r\nQWQQ\r\n"));
+
+        using (MemoryStream ms = new MemoryStream())
         {
-            using (SvnLookClient cl = new SvnLookClient())
+            SvnLookWriteArgs wa = new SvnLookWriteArgs();
+
+            cl.Write(e.HookArgs.LookOrigin, "trunk/Pre.txt", ms, wa);
+            ms.Position = 0;
+
+            using (StreamReader sr = new StreamReader(ms))
             {
-                SvnChangeInfoArgs ia = new SvnChangeInfoArgs();
-
-                SvnChangeInfoEventArgs i;
-                Assert.That(cl.GetChangeInfo(e.HookArgs.LookOrigin, ia, out i));
-
-                Assert.That(i.Revision, Is.LessThan(0L));
-                Assert.That(i.Author, Is.EqualTo(Environment.UserName));
-                Assert.That(i.LogMessage, Is.EqualTo("Blaat!\r\nQWQQ\r\n"));
-
-                using (MemoryStream ms = new MemoryStream())
-                {
-                    SvnLookWriteArgs wa = new SvnLookWriteArgs();
-
-                    cl.Write(e.HookArgs.LookOrigin, "trunk/Pre.txt", ms, wa);
-                    ms.Position = 0;
-
-                    using (StreamReader sr = new StreamReader(ms))
-                    {
-                        Assert.That(sr.ReadToEnd(), Is.EqualTo("AllTheData"));
-                    }
-
-                    string v;
-                    cl.GetProperty(e.HookArgs.LookOrigin, "trunk/Pre.txt", "boe", out v);
-
-                    Assert.That(v, Is.EqualTo("blaat"));
-
-                    SvnPropertyCollection props;
-                    cl.GetPropertyList(e.HookArgs.LookOrigin, "trunk/Pre.txt", out props);
-
-                    Assert.That(props, Is.Not.Null);
-                    Assert.That(props.Count, Is.EqualTo(1));
-                }
-
-                Guid id;
-                Assert.That(cl.TryGetRepositoryId(e.HookArgs.LookOrigin, out id));
-                Assert.That(id, Is.Not.EqualTo(Guid.Empty));
+                Assert.That(sr.ReadToEnd(), Is.EqualTo("AllTheData"));
             }
+
+            string v;
+            cl.GetProperty(e.HookArgs.LookOrigin, "trunk/Pre.txt", "boe", out v);
+
+            Assert.That(v, Is.EqualTo("blaat"));
+
+            SvnPropertyCollection props;
+            cl.GetPropertyList(e.HookArgs.LookOrigin, "trunk/Pre.txt", out props);
+
+            Assert.That(props, Is.Not.Null);
+            Assert.That(props.Count, Is.EqualTo(1));
         }
 
-        [TestMethod]
-        public void TestPreCommit()
+        Guid id;
+        Assert.That(cl.TryGetRepositoryId(e.HookArgs.LookOrigin, out id));
+        Assert.That(id, Is.Not.EqualTo(Guid.Empty));
+    }
+
+    [TestMethod]
+    public void TestPreCommit()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri uri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+
+        using (InstallHook(uri, SvnHookType.PreCommit, OnPreCommit))
         {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri uri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+            string dir = sbox.GetTempDir();
+            Client.CheckOut(new Uri(uri, "trunk/"), dir);
 
-            using (InstallHook(uri, SvnHookType.PreCommit, OnPreCommit))
-            {
-                string dir = sbox.GetTempDir();
-                Client.CheckOut(new Uri(uri, "trunk/"), dir);
+            string pre = Path.Combine(dir, "Pre.txt");
 
-                string pre = Path.Combine(dir, "Pre.txt");
+            File.WriteAllText(pre, "AllTheData");
 
-                File.WriteAllText(pre, "AllTheData");
-
-                Client.Add(pre);
-                Client.SetProperty(pre, "boe", "blaat");
-                SvnCommitArgs ca = new SvnCommitArgs();
-                ca.LogMessage = "Blaat!\nQWQQ\n";
-                Client.Commit(dir, ca);
-            }
+            Client.Add(pre);
+            Client.SetProperty(pre, "boe", "blaat");
+            SvnCommitArgs ca = new SvnCommitArgs();
+            ca.LogMessage = "Blaat!\nQWQQ\n";
+            Client.Commit(dir, ca);
         }
-        void OnPostCommit(object sender, ReposHookEventArgs e)
+    }
+    void OnPostCommit(object sender, ReposHookEventArgs e)
+    {
+        using SvnLookClient cl = new SvnLookClient();
+        SvnChangeInfoArgs ia = new SvnChangeInfoArgs();
+
+        SvnChangeInfoEventArgs i;
+        Assert.That(cl.GetChangeInfo(e.HookArgs.LookOrigin, ia, out i));
+
+        GC.KeepAlive(i);
+        Assert.That(i.Revision, Is.GreaterThanOrEqualTo(0L));
+        Assert.That(i.Author, Is.EqualTo(Environment.UserName));
+    }
+
+    [TestMethod]
+    public void TestPostCommit()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri uri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+
+        using (InstallHook(uri, SvnHookType.PostCommit, OnPostCommit))
         {
-            using (SvnLookClient cl = new SvnLookClient())
-            {
-                SvnChangeInfoArgs ia = new SvnChangeInfoArgs();
+            string dir = sbox.GetTempDir();
+            Client.CheckOut(new Uri(uri, "trunk/"), dir);
 
-                SvnChangeInfoEventArgs i;
-                Assert.That(cl.GetChangeInfo(e.HookArgs.LookOrigin, ia, out i));
-
-                GC.KeepAlive(i);
-                Assert.That(i.Revision, Is.GreaterThanOrEqualTo(0L));
-                Assert.That(i.Author, Is.EqualTo(Environment.UserName));
-            }
-        }
-
-        [TestMethod]
-        public void TestPostCommit()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri uri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
-
-            using (InstallHook(uri, SvnHookType.PostCommit, OnPostCommit))
-            {
-                string dir = sbox.GetTempDir();
-                Client.CheckOut(new Uri(uri, "trunk/"), dir);
-
-                TouchFile(Path.Combine(dir, "Post.txt"));
-                Client.Add(Path.Combine(dir, "Post.txt"));
-                SvnCommitArgs ca = new SvnCommitArgs();
-                ca.LogMessage = "Blaat!\nQWQQ\n";
-                Client.Commit(dir, ca);
-            }
+            TouchFile(Path.Combine(dir, "Post.txt"));
+            Client.Add(Path.Combine(dir, "Post.txt"));
+            SvnCommitArgs ca = new SvnCommitArgs();
+            ca.LogMessage = "Blaat!\nQWQQ\n";
+            Client.Commit(dir, ca);
         }
     }
 }

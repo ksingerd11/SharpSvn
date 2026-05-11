@@ -18,6 +18,7 @@
 #include "SvnUriTarget.h"
 #include "SvnPathTarget.h"
 #include "SvnClientEventArgs.h"
+#include "SvnConflictInfo.h"
 #include "SvnCommitItem.h"
 #include "SvnMergeInfo.h"
 #include "AprBaton.h"
@@ -115,6 +116,7 @@ namespace SharpSvn {
     using System::Collections::Generic::ICollection;
     using System::Collections::Generic::IList;
     using System::Collections::ObjectModel::Collection;
+    using System::Collections::ObjectModel::ReadOnlyCollection;
     using System::IO::Stream;
 
     /// <summary>Subversion client instance; main entrance to the Subversion Client api</summary>
@@ -679,6 +681,25 @@ namespace SharpSvn {
         bool Resolve(String^ path, SvnAccept choice, SvnResolveArgs^ args);
 #pragma endregion
 
+    public:
+        /////////////////////////////////////////
+#pragma region // Conflict Client Command
+        /// <summary>Gets SVN 1.10+ conflict information for a working copy path.</summary>
+        SvnConflictInfo^ GetConflictInfo(String^ path);
+        /// <summary>Fetches additional tree-conflict detail for the specified conflict.</summary>
+        bool FetchTreeConflictDetails(SvnConflictInfo^ conflictInfo);
+        /// <summary>Gets native tree-conflict resolution options for the specified conflict.</summary>
+        ReadOnlyCollection<SvnConflictOption^>^ GetTreeResolutionOptions(SvnConflictInfo^ conflictInfo);
+        /// <summary>Resolves a tree conflict using a native conflict option.</summary>
+        bool ResolveTreeConflict(SvnConflictInfo^ conflictInfo, SvnConflictOption^ option);
+        /// <summary>Resolves a tree conflict using a native conflict option id.</summary>
+        bool ResolveTreeConflictById(SvnConflictInfo^ conflictInfo, SvnConflictOptionId optionId);
+        /// <summary>Walks conflicted items below a working copy path.</summary>
+        bool WalkConflicts(String^ path, EventHandler<SvnConflictInfo^>^ handler);
+        /// <summary>Walks conflicted items below a working copy path.</summary>
+        bool WalkConflicts(String^ path, SvnDepth depth, EventHandler<SvnConflictInfo^>^ handler);
+#pragma endregion
+
 
     public:
         /////////////////////////////////////////
@@ -1058,6 +1079,9 @@ namespace SharpSvn {
         /// <summary>Merges the changes in the specified revisions from source to targetPath (<c>svn merge</c>)</summary>
         generic<typename TRevisionRange> where TRevisionRange : SvnRevisionRange
         bool Merge(String^ targetPath, SvnTarget^ source, ICollection<TRevisionRange>^ mergeRange, SvnMergeArgs^ args);
+
+        /// <summary>Merges all eligible changes from source to targetPath (<c>svn merge</c>)</summary>
+        bool SyncMerge(String^ targetPath, SvnTarget^ source, SvnMergeArgs^ args);
 #pragma endregion
 
     public:

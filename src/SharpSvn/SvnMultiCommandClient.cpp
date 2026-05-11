@@ -155,8 +155,9 @@ void SvnMultiCommandClientCallBacks::svn_wc_notify_func2(void *baton, const svn_
 {
     SvnMultiCommandClient^ client = AprBaton<SvnMultiCommandClient^>::Get((IntPtr)baton);
     AprPool aprPool(pool, false);
+    SvnCommandType commandType = client->CurrentCommandArgs ? client->CurrentCommandArgs->CommandType : SvnCommandType::Unknown;
 
-    SvnNotifyEventArgs^ ea = gcnew SvnNotifyEventArgs(notify, client->CurrentCommandArgs->CommandType, %aprPool);
+    SvnNotifyEventArgs^ ea = gcnew SvnNotifyEventArgs(notify, commandType, %aprPool);
 
     try
     {

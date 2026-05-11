@@ -42,7 +42,7 @@ private:
     {
         SvnExceptionContainer* ptr = reinterpret_cast<SvnExceptionContainer*>(data);
 
-        System::Diagnostics::Debug::Assert(ptr->_id == _idValue);
+        System::Diagnostics::Debug::Assert((bool)(ptr->_id == _idValue), System::String::Empty);
 
         if (ptr->_id == _idValue)
         {
@@ -68,7 +68,7 @@ public:
         if (!container)
             throw gcnew ArgumentNullException("container");
 
-        System::Diagnostics::Debug::Assert(container && container->_id == _idValue);
+        System::Diagnostics::Debug::Assert((bool)(container && container->_id == _idValue), System::String::Empty);
 
         if (container->_id == _idValue)
             return container->_exception;
@@ -79,7 +79,7 @@ public:
 private:
     ~SvnExceptionContainer()
     {
-        System::Diagnostics::Debug::Assert(_id == _idValue);
+        System::Diagnostics::Debug::Assert((bool)(_id == _idValue), System::String::Empty);
         _id = 0;
         _exception = nullptr;
     }

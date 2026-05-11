@@ -11,7 +11,8 @@
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
     <Deterministic>false</Deterministic>
-    <LangVersion>7.2</LangVersion>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
     <IsPackable>false</IsPackable>
   </PropertyGroup>
 
@@ -23,12 +24,12 @@
   <PropertyGroup>
     <!-- Somehow needed for NuGet restore -->
     <TargetFramework>net47</TargetFramework>
-    <TargetFramework Condition="'$(Configuration)' == 'DebugCore'">net6.0</TargetFramework>
-    <TargetFramework Condition="'$(Configuration)' == 'ReleaseCore'">net6.0</TargetFramework>
+    <TargetFramework Condition="'$(Configuration)' == 'DebugCore'">net10.0-windows</TargetFramework>
+    <TargetFramework Condition="'$(Configuration)' == 'ReleaseCore'">net10.0-windows</TargetFramework>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x64' ">
-    <TargetFramework>net47</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -39,7 +40,7 @@
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugCore|x64'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x64\DebugCore\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -61,7 +62,7 @@
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCore|x64'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <OutputPath>bin\x64\ReleaseCore\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
@@ -72,7 +73,7 @@
   </PropertyGroup>
   
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|x86' ">
-    <TargetFramework>net47</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x86\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -83,7 +84,7 @@
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugCore|x86'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\x86\DebugCore\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -105,7 +106,7 @@
   </PropertyGroup>
   
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCore|x86'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <OutputPath>bin\x86\ReleaseCore\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>
@@ -116,7 +117,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'">
-    <TargetFramework>net47</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\arm64\Debug\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -127,7 +128,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='DebugCore|ARM64'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <DebugSymbols>true</DebugSymbols>
     <OutputPath>bin\arm64\DebugCore\</OutputPath>
     <DefineConstants>DEBUG;TRACE</DefineConstants>
@@ -149,7 +150,7 @@
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='ReleaseCore|ARM64'">
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <OutputPath>bin\arm64\ReleaseCore\</OutputPath>
     <DefineConstants>TRACE</DefineConstants>
     <Optimize>true</Optimize>

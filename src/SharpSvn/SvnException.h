@@ -65,6 +65,7 @@ namespace SharpSvn {
             _line = line;
         }
 
+#if !defined(SHARPSVN_NETCORE)
     protected:
         SvnException(System::Runtime::Serialization::SerializationInfo^ info, System::Runtime::Serialization::StreamingContext context)
             : Exception(info, context)
@@ -77,6 +78,7 @@ namespace SharpSvn {
             _file = info->GetString("_file");
             _line = info->GetInt32("_line");
         }
+#endif
 
     public:
         SvnException()
@@ -355,11 +357,13 @@ namespace SharpSvn {
         {
         }
 
+#if !defined(SHARPSVN_NETCORE)
     protected:
         SvnMalfunctionException(System::Runtime::Serialization::SerializationInfo^ info, System::Runtime::Serialization::StreamingContext context)
             : SvnException(info, context)
         {
         }
+#endif
     };
 
     [Serializable]
@@ -399,15 +403,37 @@ namespace SharpSvn {
             }
         }
 
+#if !defined(SHARPSVN_NETCORE)
     protected:
         SvnSshException(System::Runtime::Serialization::SerializationInfo^ info, System::Runtime::Serialization::StreamingContext context)
             : SvnException(info, context)
         {
         }
+#endif
     };
 
     //////////// Generic Subversion exception wrappers
 
+#if defined(SHARPSVN_NETCORE)
+#define DECLARE_SVN_EXCEPTION_TYPE(type, parentType)                                    \
+    [Serializable]                                                                                                              \
+    public ref class type : public parentType                                                           \
+    {                                                                                                                                           \
+    internal:                                                                                                                           \
+        type(svn_error_t *error)                                                                                        \
+            : parentType(error)                                                                                                 \
+        {}                                                                                                                                      \
+    public:                                                                                                                             \
+        type()                                                                                                                          \
+        {}                                                                                                                                      \
+        type(String^ message)                                                                                           \
+            : parentType(message)                                                                                       \
+        {}                                                                                                                                      \
+        type(String^ message, Exception^ inner)                                                         \
+            : parentType(message, inner)                                                                        \
+        {}                                                                                                                                      \
+    };
+#else
 #define DECLARE_SVN_EXCEPTION_TYPE(type, parentType)                                    \
     [Serializable]                                                                                                              \
     public ref class type : public parentType                                                           \
@@ -431,6 +457,7 @@ namespace SharpSvn {
             : parentType(message, inner)                                                                        \
         {}                                                                                                                                      \
     };
+#endif
 
     DECLARE_SVN_EXCEPTION_TYPE(SvnOperationCanceledException, SvnException);
     DECLARE_SVN_EXCEPTION_TYPE(SvnOperationCompletedException, SvnException);

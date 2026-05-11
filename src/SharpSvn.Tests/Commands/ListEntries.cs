@@ -21,35 +21,32 @@ using Assert = NUnit.Framework.Assert;
 using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+[TestClass]
+public class ListEntries : TestBase
 {
-    [TestClass]
-    public class ListEntries : TestBase
+    [TestMethod]
+    public void ListEntries_WalkEntries()
     {
-        [TestMethod]
-        public void ListEntries_WalkEntries()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Default);
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Default);
 
-            string tmpDir = sbox.Wc;
+        string tmpDir = sbox.Wc;
 
-            using (SvnWorkingCopyClient wcc = new SvnWorkingCopyClient())
+        using SvnWorkingCopyClient wcc = new SvnWorkingCopyClient();
+        SvnWorkingCopyEntriesArgs a = new SvnWorkingCopyEntriesArgs();
+        a.RetrieveHidden = true;
+        //a.Depth = SvnDepth.Infinity;
+
+        bool touched = false;
+        Assert.That(wcc.ListEntries(tmpDir, a,
+            delegate (object sender, SvnWorkingCopyEntryEventArgs e)
             {
-                SvnWorkingCopyEntriesArgs a = new SvnWorkingCopyEntriesArgs();
-                a.RetrieveHidden = true;
-                //a.Depth = SvnDepth.Infinity;
-
-                bool touched = false;
-                Assert.That(wcc.ListEntries(tmpDir, a,
-                    delegate(object sender, SvnWorkingCopyEntryEventArgs e)
-                    {
-                        touched = true;
-                    }), Is.True);
+                touched = true;
+            }), Is.True);
 
 
-                Assert.That(touched);
-            }
-        }
+        Assert.That(touched);
     }
 }

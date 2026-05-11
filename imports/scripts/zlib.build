@@ -4,6 +4,13 @@
 
   <target name="zlib-build" depends="checkout">
     <OnceBlock file="build/zlib-${zlibVersion}-${platform}.build">
+      <fileset basedir="scripts">
+        <include name="zlib.build" />
+        <include name="tasks.build" />
+      </fileset>
+      <NMake workingdir="${zlibDir}" makeFile="${zlibDir}/win32/Makefile.msc" failonerror="false">
+        <arg value="clean" />
+      </NMake>
       <NMake workingdir="${zlibDir}" makeFile="${zlibDir}/win32/Makefile.msc">
         <arg line='zlib.lib LOC="/Zl"' />
         <!-- ZLIB:'CFLAGS=" -nologo -MD -W3 -O2 -Oy- -Zi -Fd""zlib"" $(LOC)"' -->

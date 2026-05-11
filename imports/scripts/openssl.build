@@ -109,6 +109,9 @@ static  int cert_select_dialog(ENGINE *e, SSL *ssl, STACK_OF(X509) *certs);' />
   </target>
   <target name="openssl-build" depends="openssl-prepare">
     <OnceBlock file="build/openssl-${opensslVersion}-${platform}.build">
+      <NMake workingdir="${opensslDir}" makeFile="${opensslMakefile}" failonerror="false">
+        <arg value="clean" />
+      </NMake>
       <NMake workingdir="${opensslDir}" makeFile="${opensslMakefile}" />
       <NMake workingdir="${opensslDir}" makeFile="${opensslMakefile}">
         <arg value="install_sw" />

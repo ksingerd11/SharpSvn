@@ -78,9 +78,41 @@
                          to="vermatch = re.search(r'^\s*#\s*define\s+XML_MINOR_VERSION\s+(\d+)', txt, re.M)" />
           <replacestring from="vermatch = re.search(r'^\s*#define\s+XML_MICRO_VERSION\s+(\d+)', txt, re.M)"
                          to="vermatch = re.search(r'^\s*#\s*define\s+XML_MICRO_VERSION\s+(\d+)', txt, re.M)" />
+          <replacestring from="        elif re.match(r'^20\d+$', val):" to="        elif val == '2022' or val == '17':
+          self.vs_version = '2022'
+          self.sln_version = '12.00'
+          self.vcproj_version = '14.3'
+          self.vcproj_extension = '.vcxproj'
+        elif val == '2026' or val == '18':
+          self.vs_version = '2026'
+          self.sln_version = '12.00'
+          self.vcproj_version = '14.5'
+          self.vcproj_extension = '.vcxproj'
+        elif re.match(r'^20\d+$', val):" />
         </filterchain>
       </FilterFile>
     </OnceBlock>
+    <FilterFile file="${svnBase}\build\generator\gen_win_dependencies.py" >
+      <filterchain>
+        <replacestring from="vermatch = re.search(r'^\s*#define\s+XML_MAJOR_VERSION\s+(\d+)', txt, re.M)"
+                       to="vermatch = re.search(r'^\s*#\s*define\s+XML_MAJOR_VERSION\s+(\d+)', txt, re.M)" />
+        <replacestring from="vermatch = re.search(r'^\s*#define\s+XML_MINOR_VERSION\s+(\d+)', txt, re.M)"
+                       to="vermatch = re.search(r'^\s*#\s*define\s+XML_MINOR_VERSION\s+(\d+)', txt, re.M)" />
+        <replacestring from="vermatch = re.search(r'^\s*#define\s+XML_MICRO_VERSION\s+(\d+)', txt, re.M)"
+                       to="vermatch = re.search(r'^\s*#\s*define\s+XML_MICRO_VERSION\s+(\d+)', txt, re.M)" />
+        <replacestring from="        elif re.match(r'^20\d+$', val):" to="        elif val == '2022' or val == '17':
+          self.vs_version = '2022'
+          self.sln_version = '12.00'
+          self.vcproj_version = '14.3'
+          self.vcproj_extension = '.vcxproj'
+        elif val == '2026' or val == '18':
+          self.vs_version = '2026'
+          self.sln_version = '12.00'
+          self.vcproj_version = '14.5'
+          self.vcproj_extension = '.vcxproj'
+        elif re.match(r'^20\d+$', val):" />
+      </filterchain>
+    </FilterFile>
   </target>
 
   <target name="svn-compat">
@@ -113,6 +145,9 @@
   <target name="svn-generate" depends="checkout, apr-build, aprutil-build, serf-build, svn-prepare, svn-compat" if="${buildSubversion}">
 
     <OnceBlock file="build/subversion-${subversionVersion}_${platform}.generated">
+      <fileset basedir="scripts">
+        <include name="subversion.build" />
+      </fileset>
       <Python workingdir="${svnBase}">
         <arg value="gen-make.py" />
         <arg line="-t vcproj" />

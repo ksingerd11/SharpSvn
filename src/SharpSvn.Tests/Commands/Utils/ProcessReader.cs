@@ -17,103 +17,106 @@ using System.IO;
 using System.Threading;
 using System;
 
-namespace SharpSvn.Tests.Commands.Utils
+namespace SharpSvn.Tests.Commands.Utils;
+
+public class ProcessReader
 {
-    public class ProcessReader
+    readonly StreamReader _processReader;
+    readonly MemoryStream _buffer;
+    readonly Thread _thread;
+    StreamReader _reader;
+
+    public ProcessReader(StreamReader reader)
     {
-        readonly StreamReader _processReader;
-        readonly MemoryStream _buffer;
-        readonly Thread _thread;
-        StreamReader _reader;
-
-        public ProcessReader(StreamReader reader)
+        if (reader == null)
         {
-            if (reader == null)
-                throw new ArgumentNullException("reader");
-
-            _processReader = reader;
-            _buffer = new MemoryStream();
-            _thread = new Thread(Read);
+            throw new ArgumentNullException("reader");
         }
 
-        public void Start()
-        {
-            _thread.Start();
-        }
+        _processReader = reader;
+        _buffer = new MemoryStream();
+        _thread = new Thread(Read);
+    }
 
-        public void Wait()
-        {
-            _thread.Join();
-        }
+    public void Start()
+    {
+        _thread.Start();
+    }
 
-        string _outputText;
-        public string Output
-        {
-            get
-            {
-                if (_outputText == null && _reader == null)
-                {
-                    _buffer.Position = 0;
-                    _outputText = new StreamReader(_buffer).ReadToEnd();
-                }
-                return _outputText;
-            }
-        }
+    public void Wait()
+    {
+        _thread.Join();
+    }
 
-        /// <summary>
-        /// Whether the reader thread has exited.
-        /// </summary>
-        public bool HasExited
+    string _outputText;
+    public string Output
+    {
+        get
         {
-            get
-            {
-                return !_thread.IsAlive;
-            }
-        }
-
-        /// <summary>
-        /// Whether the queue is empty.
-        /// </summary>
-        public bool Empty
-        {
-            get
-            {
-                return _buffer.Length == 0;
-            }
-        }
-
-        /// <summary>
-        /// Retrieves the 'next' line, blocking if necessary. Use in conjunction with the
-        /// WaitHandle, which will be signaled when the queue is non-empty.
-        /// </summary>
-        /// <returns></returns>
-        public string ReadLine()
-        {
-            if (_reader == null)
+            if (_outputText == null && _reader == null)
             {
                 _buffer.Position = 0;
-                _reader = new StreamReader(_buffer);
+                _outputText = new StreamReader(_buffer).ReadToEnd();
             }
-
-            return _reader.ReadLine();
+            return _outputText;
         }
+    }
 
-        private void Read()
+    /// <summary>
+    /// Whether the reader thread has exited.
+    /// </summary>
+    public bool HasExited
+    {
+        get
         {
-            StreamWriter writer = new StreamWriter(_buffer);
-
-            string line = null;
-
-            while ((line = _processReader.ReadLine()) != null)
-            {
-                writer.WriteLine(line);
-            }
-
-            line = _processReader.ReadToEnd();
-            if (line != null)
-                writer.Write(line);
-
-            writer.Flush();
+            return !_thread.IsAlive;
         }
+    }
+
+    /// <summary>
+    /// Whether the queue is empty.
+    /// </summary>
+    public bool Empty
+    {
+        get
+        {
+            return _buffer.Length == 0;
+        }
+    }
+
+    /// <summary>
+    /// Retrieves the 'next' line, blocking if necessary. Use in conjunction with the
+    /// WaitHandle, which will be signaled when the queue is non-empty.
+    /// </summary>
+    /// <returns></returns>
+    public string ReadLine()
+    {
+        if (_reader == null)
+        {
+            _buffer.Position = 0;
+            _reader = new StreamReader(_buffer);
+        }
+
+        return _reader.ReadLine();
+    }
+
+    private void Read()
+    {
+        StreamWriter writer = new StreamWriter(_buffer);
+
+        string line = null;
+
+        while ((line = _processReader.ReadLine()) != null)
+        {
+            writer.WriteLine(line);
+        }
+
+        line = _processReader.ReadToEnd();
+        if (line != null)
+        {
+            writer.Write(line);
+        }
+
+        writer.Flush();
     }
 }

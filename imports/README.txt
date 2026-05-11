@@ -17,11 +17,30 @@ The scripts require the following tools: (currently used version)
   * NAnt        (0.92)
   * Perl 5      (Activestate perl   5.26.3 x86)
   * Python      (Activestate python 2.7.14  x86)
-  * Visual Studio 2008, 2010, 2012, 2013, 2015, 2017 or 2019
+  * Visual Studio 2008, 2010, 2012, 2013, 2015, 2017, 2019, 2022 or 2026
     (Untested, so might require tweaks: 2005 and 2013)
 
 It is assumed all these tools are in the PATH and the settings for
 the 'Visual Studio Command Prompt' are loaded.
+
+You can install global copies of NAnt, Perl, and Python by running:
+
+  powershell -ExecutionPolicy Bypass -File .\Install-BuildTools.ps1
+
+NAnt 0.92 is installed from NuGet into the user build-tools directory. Perl
+and Python 2 are installed with winget.
+
+Open a fresh shell after install so the updated PATH is visible.
+
+From a regular command prompt or PowerShell, let NAnt bootstrap the Visual
+Studio environment:
+
+  nant -buildfile:Default.build x64
+
+From an already-initialized Visual Studio Developer Command Prompt, you can run
+the build target directly:
+
+  nant -buildfile:Default.build /D:platform=x64 build
 
 1) To build all the dependencies (including Subversion) as used by SharpSvn
    Open the visual studio command prompt for the right architecture,

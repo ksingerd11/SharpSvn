@@ -175,7 +175,7 @@ void SvnClientContext::EnsureState(SvnContextState requiredState)
     {
         LoadConfigurationDefault();
 
-        System::Diagnostics::Debug::Assert(State == SvnContextState::ConfigPrepared);
+        System::Diagnostics::Debug::Assert((bool)(State == SvnContextState::ConfigPrepared), System::String::Empty);
     }
 
     if (State < SvnContextState::ConfigLoaded && requiredState >= SvnContextState::ConfigLoaded)
@@ -249,7 +249,7 @@ void SvnClientContext::EnsureState(SvnContextState requiredState)
         }
 
         // TODO: Initialize Plink for ssh sessions?
-        System::Diagnostics::Debug::Assert(State == SvnContextState::AuthorizationInitialized);
+        System::Diagnostics::Debug::Assert((bool)(State == SvnContextState::AuthorizationInitialized), System::String::Empty);
     }
 }
 

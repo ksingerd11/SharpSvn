@@ -1,20 +1,25 @@
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup Condition=" '$(MSBuildThisFileDirectory)' != '' ">
-    <!-- Note that all these files are identical for CORE and NETFRAMEWORK, as they are just compiled once, and then used by SharpSvn -->
-    <SharpSvnPlatform Condition=" '$(SharpSvnPlatform)' == '' ">$(Platform)</SharpSvnPlatform>
+    <SharpSvnPlatform Condition=" '$(SharpSvnPlatform)' == '' And '$(PlatformTarget)' != '' ">$(PlatformTarget)</SharpSvnPlatform>
+    <SharpSvnPlatform Condition=" '$(SharpSvnPlatform)' == '' And '$(Platform)' != '' And '$(Platform)' != 'AnyCPU' And '$(Platform)' != 'Any CPU' ">$(Platform)</SharpSvnPlatform>
+    <SharpSvnPlatform Condition=" '$(SharpSvnPlatform)' == '' ">x64</SharpSvnPlatform>
+    <SharpSvnRuntimeTargetFramework Condition=" '$(SharpSvnRuntimeTargetFramework)' == '' And '$(TargetFramework)' != '' ">$(TargetFramework)</SharpSvnRuntimeTargetFramework>
+    <SharpSvnRuntimeTargetFramework Condition=" '$(SharpSvnRuntimeTargetFramework)' == '' Or !Exists('$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\$(SharpSvnRuntimeTargetFramework)') ">net10.0-windows</SharpSvnRuntimeTargetFramework>
     <!-- Default -->
-    <SharpSvnRuntimeDir>$(MSBuildThisFileDirectory)\..\runtimes\win-x86\lib\netcoreapp\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir>$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
     <!-- Overrides -->
-    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'x86'   ">$(MSBuildThisFileDirectory)\..\runtimes\win-x86\lib\netcoreapp\</SharpSvnRuntimeDir>
-    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'Win32' ">$(MSBuildThisFileDirectory)\..\runtimes\win-x86\lib\netcoreapp\</SharpSvnRuntimeDir>
-    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'x64'   ">$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\netcoreapp\</SharpSvnRuntimeDir>
-    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'AMD64' ">$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\netcoreapp\</SharpSvnRuntimeDir>
-    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'ARM64' ">$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\lib\netcoreapp\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'x86'   ">$(MSBuildThisFileDirectory)\..\runtimes\win-x86\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'Win32' ">$(MSBuildThisFileDirectory)\..\runtimes\win-x86\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'x64'   ">$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'AMD64' ">$(MSBuildThisFileDirectory)\..\runtimes\win-x64\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
+    <SharpSvnRuntimeDir Condition=" '$(SharpSvnPlatform)' == 'ARM64' ">$(MSBuildThisFileDirectory)\..\runtimes\win-arm64\lib\$(SharpSvnRuntimeTargetFramework)\</SharpSvnRuntimeDir>
   </PropertyGroup>
 
   <ItemGroup Condition=" '$(SharpSvnRuntimeDir)' != '' ">
+    <SharpSvnExternalFiles Include="$(SharpSvnRuntimeDir)\*.dll" Condition=" '$(CopySharpSvnExternals)' != 'false' " />
     <SharpSvnExternalFiles Include="$(SharpSvnRuntimeDir)\*.svnExe" Condition=" '$(CopySharpSvnExternals)' != 'false' " />
     <SharpSvnExternalFiles Include="$(SharpSvnRuntimeDir)\*.svnDll" Condition=" '$(CopySharpSvnExternals)' != 'false' " />
+    <SharpSvnExternalFiles Include="$(SharpSvnRuntimeDir)\*.pdb" Condition=" '$(CopySharpSvnSymbols)' == 'true' " />
     <SharpSvnExternalFiles Include="$(SharpSvnRuntimeDir)\*.xml" Condition=" '$(CopySharpSvnExternals)' != 'false' And '$(CopySharpSvnDocumentation)' != 'false'" />
   </ItemGroup>
 

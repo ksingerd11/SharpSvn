@@ -95,7 +95,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
@@ -116,7 +116,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
@@ -137,7 +137,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
@@ -159,7 +159,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
@@ -180,7 +180,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|ARM64'" Label="Configuration">
@@ -200,7 +200,7 @@
     <PlatformToolset Condition="$(PlatformToolset) == ''">v100</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
     <CLRSupport>NetCore</CLRSupport>
-    <TargetFramework>net6.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <SharpSvnUpdateVersionResource>false</SharpSvnUpdateVersionResource>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -830,6 +830,7 @@ $(SolutionDir)tools\Errors2Enum\bin\Release\Errors2Enum.exe "$(VCInstallDir)." "
     <ClInclude Include="SvnNames.h" />
     <ClInclude Include="UnmanagedStructs.h" />
     <ClInclude Include="SvnCommandLineArgumentCollection.h" />
+    <ClInclude Include="SvnConflictInfo.h" />
     <ClInclude Include="SvnCommitItem.h" />
     <ClInclude Include="SvnDiff.h" />
     <ClInclude Include="SvnEnums.h" />
@@ -1033,7 +1034,7 @@ $(SolutionDir)tools\Errors2Enum\bin\Release\Errors2Enum.exe "$(VCInstallDir)." "
       <LogicalName>SharpSvn.%(Filename).resources</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
-  <ItemGroup Condition="'$(Configuration)' != 'ReleaseCore' And '$(Configuation)' != 'DebugCore'">
+  <ItemGroup Condition="'$(Configuration)' != 'ReleaseCore' And '$(Configuration)' != 'DebugCore'">
     <CustomBuild Include="SharpSvnStrings.txt" Condition="'$(BuildBotBuild)' != 'true'">
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Generating SharpSvnStrings.h</Message>
       <Message Condition="'$(Configuration)|$(Platform)'=='DebugCore|Win32'">Generating SharpSvnStrings.h</Message>
@@ -1165,6 +1166,7 @@ $(SolutionDir)tools\Errors2Enum\bin\Release\Errors2Enum.exe "$(VCInstallDir)." "
     <ClCompile Include="Commands\CheckOut.cpp" />
     <ClCompile Include="Commands\Vacuum.cpp" />
     <ClCompile Include="Commands\Commit.cpp" />
+    <ClCompile Include="Commands\ConflictInfo.cpp" />
     <ClCompile Include="Commands\Copy.cpp" />
     <ClCompile Include="Commands\CreateDirectory.cpp" />
     <ClCompile Include="Commands\CropWorkingCopy.cpp" />
@@ -1277,6 +1279,21 @@ $(SolutionDir)tools\Errors2Enum\bin\Release\Errors2Enum.exe "$(VCInstallDir)." "
     <Import Project="..\packages\Microsoft.SourceLink.GitHub.1.1.1\build\Microsoft.SourceLink.GitHub.targets" Condition="Exists('..\packages\Microsoft.SourceLink.GitHub.1.1.1\build\Microsoft.SourceLink.GitHub.targets')" />
     <Import Project="..\packages\SharpSvn.AnnotateAssembly.1.14001.132\build\SharpSvn.AnnotateAssembly.targets" Condition="Exists('..\packages\SharpSvn.AnnotateAssembly.1.14001.132\build\SharpSvn.AnnotateAssembly.targets')" />
   </ImportGroup>
+  <Target Name="EnsureSharpSvnNativeImports" BeforeTargets="PreBuildEvent">
+    <PropertyGroup>
+      <SharpSvnImportsRoot>$(SolutionDir)..\imports\release</SharpSvnImportsRoot>
+      <SharpSvnImportsPlatform>$(Platform)</SharpSvnImportsPlatform>
+      <SharpSvnImportsPlatform Condition="'$(Platform)' == 'Win32'">win32</SharpSvnImportsPlatform>
+      <SharpSvnImportsLibDir>$(SharpSvnImportsRoot)\lib-$(Platform)</SharpSvnImportsLibDir>
+      <SharpSvnImportsLibDir Condition="'$(Platform)' == 'Win32'">$(SharpSvnImportsRoot)\lib</SharpSvnImportsLibDir>
+      <SharpSvnImportsBuildHelp>SharpSvn native imports are missing. Install global build tools with: powershell -ExecutionPolicy Bypass -File "$(SolutionDir)..\imports\Install-BuildTools.ps1". Then open a fresh shell and run: cd "$(SolutionDir)..\imports" &amp; nant -buildfile:Default.build /D:platform=$(SharpSvnImportsPlatform) build. Missing: {0}</SharpSvnImportsBuildHelp>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(SharpSvnImportsRoot)\po')" Text="$([System.String]::Format('$(SharpSvnImportsBuildHelp)', '$(SharpSvnImportsRoot)\po'))" />
+    <Error Condition="!Exists('$(SharpSvnImportsRoot)\include\apr-1\apr_errno.h')" Text="$([System.String]::Format('$(SharpSvnImportsBuildHelp)', '$(SharpSvnImportsRoot)\include\apr-1\apr_errno.h'))" />
+    <Error Condition="!Exists('$(SharpSvnImportsRoot)\include\serf-1\serf.h')" Text="$([System.String]::Format('$(SharpSvnImportsBuildHelp)', '$(SharpSvnImportsRoot)\include\serf-1\serf.h'))" />
+    <Error Condition="!Exists('$(SharpSvnImportsRoot)\include\libssh2\libssh2.h')" Text="$([System.String]::Format('$(SharpSvnImportsBuildHelp)', '$(SharpSvnImportsRoot)\include\libssh2\libssh2.h'))" />
+    <Error Condition="!Exists('$(SharpSvnImportsLibDir)')" Text="$([System.String]::Format('$(SharpSvnImportsBuildHelp)', '$(SharpSvnImportsLibDir)'))" />
+  </Target>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>This project references NuGet package(s) that are missing on this computer. Use NuGet Package Restore to download them.  For more information, see http://go.microsoft.com/fwlink/?LinkID=322105. The missing file is {0}.</ErrorText>

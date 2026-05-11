@@ -21,36 +21,31 @@ using Assert = NUnit.Framework.Assert;
 using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+[TestClass]
+public class CreateRepositoryTests : TestBase
 {
-    [TestClass]
-    public class CreateRepositoryTests : TestBase
+    [TestMethod]
+    public void CreateRepository_FsFs()
     {
-        [TestMethod]
-        public void CreateRepository_FsFs()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
+        SvnSandBox sbox = new SvnSandBox(this);
 
-            using (SvnRepositoryClient reposClient = new SvnRepositoryClient())
-            {
-                SvnCreateRepositoryArgs cra = new SvnCreateRepositoryArgs();
-                cra.RepositoryCompatibility = SvnRepositoryCompatibility.Default;
-                reposClient.CreateRepository(sbox.GetTempDir(), cra);
-            }
-        }
+        using SvnRepositoryClient reposClient = new SvnRepositoryClient();
+        SvnCreateRepositoryArgs cra = new SvnCreateRepositoryArgs();
+        cra.RepositoryCompatibility = SvnRepositoryCompatibility.Default;
+        reposClient.CreateRepository(sbox.GetTempDir(), cra);
+    }
 
-        [TestMethod]
-        public void CreateRepository_Bdb()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
+    [TestMethod]
+    public void CreateRepository_Bdb()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
 
-            using (SvnRepositoryClient reposClient = new SvnRepositoryClient())
-            {
-                SvnCreateRepositoryArgs cra = new SvnCreateRepositoryArgs();
-                cra.RepositoryType = SvnRepositoryFileSystem.BerkeleyDB;
-                cra.RepositoryCompatibility = SvnRepositoryCompatibility.Default;
-                reposClient.CreateRepository(sbox.GetTempDir(), cra);
-            }
-        }
+        using SvnRepositoryClient reposClient = new SvnRepositoryClient();
+        SvnCreateRepositoryArgs cra = new SvnCreateRepositoryArgs();
+        cra.RepositoryType = SvnRepositoryFileSystem.BerkeleyDB;
+        cra.RepositoryCompatibility = SvnRepositoryCompatibility.Default;
+        reposClient.CreateRepository(sbox.GetTempDir(), cra);
     }
 }

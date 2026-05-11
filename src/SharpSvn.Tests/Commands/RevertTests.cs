@@ -24,71 +24,77 @@ using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests Client::Revert
+/// </summary>
+
+[TestClass]
+public class RevertTests : TestBase
 {
     /// <summary>
-    /// Tests Client::Revert
+    ///Attempts to revert single file.
     /// </summary>
-
-    [TestClass]
-    public class RevertTests : TestBase
+    [TestMethod]
+    public void Revert_RevertFile()
     {
-        /// <summary>
-        ///Attempts to revert single file.
-        /// </summary>
-        [TestMethod]
-        public void Revert_RevertFile()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.AnkhSvnCases);
-            string WcPath = sbox.Wc;
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.AnkhSvnCases);
+        string WcPath = sbox.Wc;
 
-            string filePath = Path.Combine(WcPath, "Form.cs");
+        string filePath = Path.Combine(WcPath, "Form.cs");
 
-            string oldContents;
-            string newContents;
-            this.ModifyFile(out oldContents, out newContents, filePath, filePath, SvnDepth.Empty);
+        string oldContents;
+        string newContents;
+        this.ModifyFile(out oldContents, out newContents, filePath, filePath, SvnDepth.Empty);
 
 
-            Assert.That(newContents, Is.EqualTo(oldContents), "File not reverted");
-
-        }
-
-        /// <summary>
-        ///Attempts to revert the whole working copy
-        /// </summary>
-        [TestMethod]
-        public void Revert_RevertDirectory()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.AnkhSvnCases);
-            string WcPath = sbox.Wc;
-
-            string oldContents;
-            string newContents;
-            this.ModifyFile(out oldContents, out newContents, Path.Combine(WcPath, "Form.cs"),
-                WcPath, SvnDepth.Infinity);
-
-            Assert.That(newContents, Is.EqualTo(oldContents), "File not reverted");
-
-        }
-
-        private void ModifyFile(out string oldContents, out string newContents, string filePath,
-            string revertPath, SvnDepth depth)
-        {
-
-            using (StreamReader reader = new StreamReader(filePath))
-                oldContents = reader.ReadToEnd();
-            using (StreamWriter writer = new StreamWriter(filePath))
-                writer.WriteLine("mooooooo");
-
-            SvnRevertArgs a = new SvnRevertArgs();
-            a.Depth = depth;
-            this.Client.Revert(revertPath, a);
-
-            using (StreamReader reader = new StreamReader(filePath))
-                newContents = reader.ReadToEnd();
-        }
+        Assert.That(newContents, Is.EqualTo(oldContents), "File not reverted");
 
     }
+
+    /// <summary>
+    ///Attempts to revert the whole working copy
+    /// </summary>
+    [TestMethod]
+    public void Revert_RevertDirectory()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.AnkhSvnCases);
+        string WcPath = sbox.Wc;
+
+        string oldContents;
+        string newContents;
+        this.ModifyFile(out oldContents, out newContents, Path.Combine(WcPath, "Form.cs"),
+            WcPath, SvnDepth.Infinity);
+
+        Assert.That(newContents, Is.EqualTo(oldContents), "File not reverted");
+
+    }
+
+    private void ModifyFile(out string oldContents, out string newContents, string filePath,
+        string revertPath, SvnDepth depth)
+    {
+
+        using (StreamReader reader = new StreamReader(filePath))
+        {
+            oldContents = reader.ReadToEnd();
+        }
+
+        using (StreamWriter writer = new StreamWriter(filePath))
+        {
+            writer.WriteLine("mooooooo");
+        }
+
+        SvnRevertArgs a = new SvnRevertArgs();
+        a.Depth = depth;
+        this.Client.Revert(revertPath, a);
+
+        using (StreamReader reader = new StreamReader(filePath))
+        {
+            newContents = reader.ReadToEnd();
+        }
+    }
+
 }

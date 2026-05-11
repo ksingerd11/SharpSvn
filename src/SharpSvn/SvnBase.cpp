@@ -100,7 +100,7 @@ void SvnBase::EnsureLoaded()
 
                 LONG v = ::InterlockedExchange(&ensurer, 2);
 
-                System::Diagnostics::Debug::Assert(v == 1);
+                System::Diagnostics::Debug::Assert((bool)(v == 1), System::String::Empty);
             }
         }
         finally

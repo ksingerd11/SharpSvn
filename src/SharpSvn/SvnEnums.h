@@ -650,6 +650,40 @@ namespace SharpSvn {
         Replace = svn_wc_conflict_action_replace,
     };
 
+    public enum class SvnConflictOptionId
+    {
+        Undefined = svn_client_conflict_option_undefined,
+        Postpone = svn_client_conflict_option_postpone,
+        BaseText = svn_client_conflict_option_base_text,
+        IncomingText = svn_client_conflict_option_incoming_text,
+        WorkingText = svn_client_conflict_option_working_text,
+        IncomingTextWhereConflicted = svn_client_conflict_option_incoming_text_where_conflicted,
+        WorkingTextWhereConflicted = svn_client_conflict_option_working_text_where_conflicted,
+        MergedText = svn_client_conflict_option_merged_text,
+        Unspecified = svn_client_conflict_option_unspecified,
+        AcceptCurrentWcState = svn_client_conflict_option_accept_current_wc_state,
+        UpdateMoveDestination = svn_client_conflict_option_update_move_destination,
+        UpdateAnyMovedAwayChildren = svn_client_conflict_option_update_any_moved_away_children,
+        IncomingAddIgnore = svn_client_conflict_option_incoming_add_ignore,
+        IncomingAddedFileTextMerge = svn_client_conflict_option_incoming_added_file_text_merge,
+        IncomingAddedFileReplaceAndMerge = svn_client_conflict_option_incoming_added_file_replace_and_merge,
+        IncomingAddedDirMerge = svn_client_conflict_option_incoming_added_dir_merge,
+        IncomingAddedDirReplace = svn_client_conflict_option_incoming_added_dir_replace,
+        IncomingAddedDirReplaceAndMerge = svn_client_conflict_option_incoming_added_dir_replace_and_merge,
+        IncomingDeleteIgnore = svn_client_conflict_option_incoming_delete_ignore,
+        IncomingDeleteAccept = svn_client_conflict_option_incoming_delete_accept,
+        IncomingMoveFileTextMerge = svn_client_conflict_option_incoming_move_file_text_merge,
+        IncomingMoveDirMerge = svn_client_conflict_option_incoming_move_dir_merge,
+        LocalMoveFileTextMerge = svn_client_conflict_option_local_move_file_text_merge,
+        LocalMoveDirMerge = svn_client_conflict_option_local_move_dir_merge,
+        SiblingMoveFileTextMerge = svn_client_conflict_option_sibling_move_file_text_merge,
+        SiblingMoveDirMerge = svn_client_conflict_option_sibling_move_dir_merge,
+        BothMovedFileMerge = svn_client_conflict_option_both_moved_file_merge,
+        BothMovedFileMoveMerge = svn_client_conflict_option_both_moved_file_move_merge,
+        BothMovedDirMerge = svn_client_conflict_option_both_moved_dir_merge,
+        BothMovedDirMoveMerge = svn_client_conflict_option_both_moved_dir_move_merge,
+    };
+
     public enum class SvnOperation
     {
         None = svn_wc_operation_none,

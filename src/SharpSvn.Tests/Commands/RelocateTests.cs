@@ -27,86 +27,88 @@ using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// A test for Client.Relocate
+/// </summary>
+[TestClass]
+public class RelocateTests : TestBase
 {
-    /// <summary>
-    /// A test for Client.Relocate
-    /// </summary>
-    [TestClass]
-    public class RelocateTests : TestBase
+    [TestMethod]
+    public void Relocate_SvnServeRelocate()
     {
-        [TestMethod]
-        public void Relocate_SvnServeRelocate()
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Default, false);
+
+        // start a svnserve process on this repos
+        Process svnserve = this.StartSvnServe(sbox.RepositoryUri.AbsolutePath);
+
+        try
         {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Default, false);
+            Uri localUri = new Uri(String.Format("svn://127.0.0.1:{0}/", PortNumber));
 
-            // start a svnserve process on this repos
-            Process svnserve = this.StartSvnServe(sbox.RepositoryUri.AbsolutePath);
-
-            try
+            bool svnServeAvailable = false;
+            for (int i = 0; i < 10; i++)
             {
-                Uri localUri = new Uri(String.Format("svn://127.0.0.1:{0}/", PortNumber));
+                SvnInfoArgs ia = new SvnInfoArgs();
+                ia.ThrowOnError = false;
 
-                bool svnServeAvailable = false;
-                for (int i = 0; i < 10; i++)
+                // This test also checks whether "svn://127.0.0.1:{0}/" is correctly canonicalized to "svn://127.0.0.1:{0}"
+                Client.Info(localUri, ia,
+                    delegate(object sender, SvnInfoEventArgs e)
+                    {
+                        svnServeAvailable = true;
+                    });
+
+                if (svnServeAvailable)
                 {
-                    SvnInfoArgs ia = new SvnInfoArgs();
-                    ia.ThrowOnError = false;
-
-                    // This test also checks whether "svn://127.0.0.1:{0}/" is correctly canonicalized to "svn://127.0.0.1:{0}"
-                    Client.Info(localUri, ia,
-                        delegate(object sender, SvnInfoEventArgs e)
-                        {
-                            svnServeAvailable = true;
-                        });
-
-                    if (svnServeAvailable)
-                        break;
-                    Thread.Sleep(100);
+                    break;
                 }
 
-                Assert.That(svnServeAvailable);
-
-                Assert.That(Client.Relocate(sbox.Wc, sbox.RepositoryUri, localUri));
-
-                Collection<SvnInfoEventArgs> list;
-                SvnInfoArgs a = new SvnInfoArgs();
-
-                Assert.That(Client.GetInfo(sbox.Wc, a, out list));
-
-                Assert.That(list.Count, Is.GreaterThan(0));
-                Assert.That(list[0].Uri.ToString().StartsWith(localUri.ToString()));
+                Thread.Sleep(100);
             }
-            finally
-            {
-                System.Threading.Thread.Sleep(100);
-                if (!svnserve.HasExited)
-                {
-                    svnserve.Kill();
-                    svnserve.WaitForExit();
-                }
-            }
+
+            Assert.That(svnServeAvailable);
+
+            Assert.That(Client.Relocate(sbox.Wc, sbox.RepositoryUri, localUri));
+
+            Collection<SvnInfoEventArgs> list;
+            SvnInfoArgs a = new SvnInfoArgs();
+
+            Assert.That(Client.GetInfo(sbox.Wc, a, out list));
+
+            Assert.That(list.Count, Is.GreaterThan(0));
+            Assert.That(list[0].Uri.ToString().StartsWith(localUri.ToString()));
         }
-
-
-        /// <summary>
-        /// Starts a svnserve instance.
-        /// </summary>
-        /// <param name="root">The root directory to use for svnserve.</param>
-        /// <returns></returns>
-        protected Process StartSvnServe(string root)
+        finally
         {
-            ProcessStartInfo psi = new ProcessStartInfo(Path.GetFullPath(Path.Combine(ProjectBase, "..\\..\\imports\\release\\bin\\svnserve.exe")),
-                String.Format("--daemon --root {0} --listen-host 127.0.0.1 --listen-port {1}", root,
-                PortNumber));
-
-            psi.CreateNoWindow = true;
-            psi.UseShellExecute = false;
-
-            return Process.Start(psi);
+            System.Threading.Thread.Sleep(100);
+            if (!svnserve.HasExited)
+            {
+                svnserve.Kill();
+                svnserve.WaitForExit();
+            }
         }
-
-        protected static readonly int PortNumber = 7777 + new Random().Next(5000);
     }
+
+
+    /// <summary>
+    /// Starts a svnserve instance.
+    /// </summary>
+    /// <param name="root">The root directory to use for svnserve.</param>
+    /// <returns></returns>
+    protected Process StartSvnServe(string root)
+    {
+        ProcessStartInfo psi = new ProcessStartInfo(Path.GetFullPath(Path.Combine(ProjectBase, "..\\..\\imports\\release\\bin\\svnserve.exe")),
+            String.Format("--daemon --root {0} --listen-host 127.0.0.1 --listen-port {1}", root,
+            PortNumber));
+
+        psi.CreateNoWindow = true;
+        psi.UseShellExecute = false;
+
+        return Process.Start(psi);
+    }
+
+    protected static readonly int PortNumber = 7777 + new Random().Next(5000);
 }

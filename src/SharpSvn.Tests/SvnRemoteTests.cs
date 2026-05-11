@@ -20,103 +20,102 @@ using SharpSvn.Tests.Commands;
 using Assert = NUnit.Framework.Assert;
 using Is = NUnit.Framework.Is;
 
-namespace SharpSvn.Tests
+namespace SharpSvn.Tests;
+
+[TestClass]
+public class SvnRemoteTests : TestBase
 {
-    [TestClass]
-    public class SvnRemoteTests : TestBase
+    [TestMethod]
+    public void RemoteList()
     {
-        [TestMethod]
-        public void RemoteList()
+        SvnClient cl = NewSvnClient(false, false);
+        bool found = false;
+        SvnListArgs la = new SvnListArgs();
+        la.RetrieveEntries = SvnDirEntryItems.AllFieldsV15;
+
+        cl.List(new Uri("https://svn.apache.org/repos/asf/subversion/trunk/"), la, delegate (object Sender, SvnListEventArgs e)
         {
-            SvnClient cl = NewSvnClient(false, false);
-            bool found = false;
-            SvnListArgs la = new SvnListArgs();
-            la.RetrieveEntries = SvnDirEntryItems.AllFieldsV15;
+            Assert.That(e.Entry, Is.Not.Null);
+            Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
+            Assert.That(e.Entry.Author, Is.Not.Null);
+            found = true;
+        });
 
-            cl.List(new Uri("https://svn.apache.org/repos/asf/subversion/trunk/"), la, delegate (object Sender, SvnListEventArgs e)
-            {
-                Assert.That(e.Entry, Is.Not.Null);
-                Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
-                Assert.That(e.Entry.Author, Is.Not.Null);
-                found = true;
-            });
+        Assert.That(found);
 
-            Assert.That(found);
+        Collection<SvnListEventArgs> ee;
+        cl.GetList(new Uri("https://svn.apache.org/repos/asf/subversion/trunk/"), out ee);
+        Assert.That(ee, Is.Not.Null);
+        Assert.That(ee[0].Entry.Author, Is.Null); // no author without RetrieveEntries
+    }
 
-            Collection<SvnListEventArgs> ee;
-            cl.GetList(new Uri("https://svn.apache.org/repos/asf/subversion/trunk/"), out ee);
-            Assert.That(ee, Is.Not.Null);
-            Assert.That(ee[0].Entry.Author, Is.Null); // no author without RetrieveEntries
+    [TestMethod, Ignore]
+    public void TestSsh()
+    {
+        SvnClient cl = new SvnClient();
+        bool found = false;
+
+        //cl.KeepSession = true;
+
+        cl.Authentication.SshServerTrustHandlers += delegate (object sender, Security.SvnSshServerTrustEventArgs e)
+                {
+                    e.AcceptedFailures = e.Failures;
+                };
+
+        cl.Authentication.UserNameHandlers += delegate (object sender, Security.SvnUserNameEventArgs e)
+                {
+                    e.UserName = "bert";
+                    e.Save = true;
+                };
+        cl.List(new Uri("svn+libssh2://vip/home/svn/repos/ankh-test"), delegate (object Sender, SvnListEventArgs e)
+        {
+            Assert.That(e.Entry, Is.Not.Null);
+            Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
+            Assert.That(e.Entry.Author, Is.Not.Null);
+            found = true;
+        });
+
+        Assert.That(found);
+
+        found = false;
+
+        cl.List(new Uri("svn+libssh2://bert@vip/home/svn/repos/ankh-test"), delegate (object Sender, SvnListEventArgs e)
+        {
+            Assert.That(e.Entry, Is.Not.Null);
+            Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
+            Assert.That(e.Entry.Author, Is.Not.Null);
+            found = true;
+        });
+
+        Assert.That(found);
+    }
+
+    void Authentication_SshServerTrustHandlers(object sender, Security.SvnSshServerTrustEventArgs e)
+    {
+        e.AcceptedFailures = e.Failures;
+    }
+
+    [TestMethod]
+    public void TestSshConnectError()
+    {
+        SvnClient cl = new SvnClient();
+        SvnRepositoryIOException rio = null;
+        try
+        {
+            cl.Info(new Uri("svn+builtin-ssh://github.com:80"),
+                delegate (object Sender, SvnInfoEventArgs e)
+                { });
+        }
+        catch (SvnRepositoryIOException e)
+        {
+            rio = e;
         }
 
-        [TestMethod, Ignore]
-        public void TestSsh()
-        {
-            SvnClient cl = new SvnClient();
-            bool found = false;
+        Assert.That(rio, Is.Not.Null);
 
-            //cl.KeepSession = true;
+        SvnSshException sshEx = rio.GetCause<SvnSshException>();
 
-            cl.Authentication.SshServerTrustHandlers += delegate (object sender, Security.SvnSshServerTrustEventArgs e)
-                    {
-                        e.AcceptedFailures = e.Failures;
-                    };
-
-            cl.Authentication.UserNameHandlers += delegate (object sender, Security.SvnUserNameEventArgs e)
-                    {
-                        e.UserName = "bert";
-                        e.Save = true;
-                    };
-            cl.List(new Uri("svn+libssh2://vip/home/svn/repos/ankh-test"), delegate (object Sender, SvnListEventArgs e)
-            {
-                Assert.That(e.Entry, Is.Not.Null);
-                Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
-                Assert.That(e.Entry.Author, Is.Not.Null);
-                found = true;
-            });
-
-            Assert.That(found);
-
-            found = false;
-
-            cl.List(new Uri("svn+libssh2://bert@vip/home/svn/repos/ankh-test"), delegate (object Sender, SvnListEventArgs e)
-            {
-                Assert.That(e.Entry, Is.Not.Null);
-                Assert.That(e.Entry.Revision, Is.GreaterThan(0L));
-                Assert.That(e.Entry.Author, Is.Not.Null);
-                found = true;
-            });
-
-            Assert.That(found);
-        }
-
-        void Authentication_SshServerTrustHandlers(object sender, Security.SvnSshServerTrustEventArgs e)
-        {
-            e.AcceptedFailures = e.Failures;
-        }
-
-        [TestMethod]
-        public void TestSshConnectError()
-        {
-            SvnClient cl = new SvnClient();
-            SvnRepositoryIOException rio = null;
-            try
-            {
-                cl.Info(new Uri("svn+builtin-ssh://github.com:80"),
-                    delegate (object Sender, SvnInfoEventArgs e)
-                    { });
-            }
-            catch (SvnRepositoryIOException e)
-            {
-                rio = e;
-            }
-
-            Assert.That(rio, Is.Not.Null);
-
-            SvnSshException sshEx = rio.GetCause<SvnSshException>();
-
-            Assert.That(sshEx, Is.Not.Null);
-            Assert.That(sshEx.SshErrorCode, Is.EqualTo(SvnSshErrorCode.LIBSSH2_ERROR_SOCKET_DISCONNECT));
-        }
+        Assert.That(sshEx, Is.Not.Null);
+        Assert.That(sshEx.SshErrorCode, Is.EqualTo(SvnSshErrorCode.LIBSSH2_ERROR_SOCKET_DISCONNECT));
     }
 }

@@ -1,15 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <Configurations>Debug;Release</Configurations>
+    <Configurations>Debug;Release;DebugCore;ReleaseCore</Configurations>
     <Platforms>AnyCPU</Platforms>
-    <TargetFramework>net46</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
+    <TargetFramework Condition="'$(Configuration)' == 'DebugCore'">net10.0</TargetFramework>
+    <TargetFramework Condition="'$(Configuration)' == 'ReleaseCore'">net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <OutputType>Exe</OutputType>
     <OutputPath>bin\$(Configuration)\</OutputPath>
 
-    <!-- This is currently needed, because the project is referenced from SharpSvn.Testst. Otherwise msbuild /restore fails -->
-    <RuntimeIdentifier>win7-x86</RuntimeIdentifier>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
   </PropertyGroup>
 
 </Project>

@@ -38,6 +38,106 @@ public abstract class ExternalAppTask : NAnt.Core.Tasks.ExternalProgramBase
 {
     DirectoryInfo _workingDirectory;
 
+    public static SortedList LoadEnvironmentFromScript(string scriptPath, string scriptArgs)
+    {
+        if (string.IsNullOrEmpty(scriptPath) || !System.IO.File.Exists(scriptPath))
+            throw new System.IO.FileNotFoundException("Environment script file not found", scriptPath);
+
+        ProcessStartInfo psi = new ProcessStartInfo(Environment.GetEnvironmentVariable("COMSPEC"),
+                                     "/C \"" + scriptPath + "\" " + scriptArgs +" && echo.!.!.! && set");
+        psi.UseShellExecute = false;
+        psi.RedirectStandardOutput = true;
+
+        // Shorten PATH before vcvarsall.bat runs to avoid "The input line is too long".
+        // vcvarsall.bat prepends many VS/SDK directories; if PATH is already long those
+        // push CMD past its 8191-char limit.  We keep all non-VS/SDK entries so tools
+        // like git, perl, nasm and python remain available, but drop any entries that
+        // vcvarsall.bat will add back anyway (Visual Studio, Windows Kits, MSBuild…).
+        {
+            string currentPath = Environment.GetEnvironmentVariable("PATH") ?? "";
+            string sysRoot = (Environment.GetEnvironmentVariable("SystemRoot") ?? @"C:\Windows").ToUpperInvariant();
+            var kept = new System.Text.StringBuilder();
+            foreach (string entry in currentPath.Split(Path.PathSeparator))
+            {
+                string up = entry.ToUpperInvariant().Trim('"').TrimEnd('\\');
+                // Drop entries that vcvarsall.bat re-adds (VS, SDK, MSBuild, VC tools).
+                if (up.Contains("MICROSOFT VISUAL STUDIO") ||
+                    up.Contains("WINDOWS KITS") ||
+                    up.Contains("\\MSBUILD\\") ||
+                    up.Contains("\\VC\\") ||
+                    up.Contains("\\VCTIP") ||
+                    up.Contains("\\TEAM TOOLS\\") ||
+                    up.Contains("\\COMMON7\\"))
+                    continue;
+                if (kept.Length > 0) kept.Append(';');
+                kept.Append(entry);
+            }
+            psi.EnvironmentVariables["PATH"] = kept.ToString();
+        }
+
+        using(Process p = Process.Start(psi))
+        {
+            bool inSet = false;
+            string line;
+            SortedList env = new SortedList();
+
+            while (null != (line = p.StandardOutput.ReadLine()))
+            {
+                if (!inSet)
+                {
+                    if (line.StartsWith("!.!.!"))
+                    {
+                        inSet = true;
+                        continue;
+                    }
+
+                    continue;
+                }
+
+                int nIs = line.IndexOf('=');
+                if (nIs <= 0)
+                    continue;
+
+                string key = line.Substring(0, nIs);
+                string value = line.Substring(nIs+1);
+                env[key] = value;
+            }
+
+            p.WaitForExit();
+            if (p.ExitCode != 0)
+                throw new InvalidOperationException("Environment script failed");
+
+            return env;
+        }
+    }
+
+    protected static void ApplyEnvironment(Process process, SortedList env)
+    {
+        foreach(DictionaryEntry e in env)
+        {
+            string key = (string)e.Key;
+            process.StartInfo.EnvironmentVariables[key] = (string)e.Value;
+        }
+    }
+
+    protected static string FindExecutableOnPath(string exeName, string pathValue)
+    {
+        if (string.IsNullOrEmpty(exeName) || string.IsNullOrEmpty(pathValue))
+            return null;
+
+        foreach (string dir in pathValue.Split(Path.PathSeparator))
+        {
+            if (string.IsNullOrEmpty(dir))
+                continue;
+
+            string candidate = Path.Combine(dir.Trim('"'), exeName);
+            if (File.Exists(candidate))
+                return candidate;
+        }
+
+        return null;
+    }
+
     protected override void PrepareProcess(Process process)
     {
         base.PrepareProcess(process);
@@ -311,7 +411,18 @@ public class MSBuild : ExternalAppTask
             }
 
             if (Src != null)
-              sb.AppendFormat(" \"{0}\"", Src.FullName);
+            {
+              FileInfo src = Src;
+              if (!File.Exists(src.FullName)
+                  && string.Equals(src.Extension, ".sln", StringComparison.OrdinalIgnoreCase))
+              {
+                string slnx = Path.ChangeExtension(src.FullName, ".slnx");
+                if (File.Exists(slnx))
+                  src = new FileInfo(slnx);
+              }
+
+              sb.AppendFormat(" \"{0}\"", src.FullName);
+            }
 
 
             if (!String.IsNullOrEmpty(Verbosity))
@@ -364,6 +475,83 @@ public class NMake : ExternalAppTask
             sb.Append(" /S \"MAKE=nmake /S /NOLOGO\"");
 
           return sb.ToString().Trim();
+        }
+    }
+
+    protected override void PrepareProcess(Process process)
+    {
+        base.PrepareProcess(process);
+
+        string vcVarsAllBat = Properties["vcVarsAllBat"];
+        if (string.IsNullOrEmpty(vcVarsAllBat))
+            return;
+
+        string platform = Properties["platform"];
+        string vcArgs = null;
+        switch (platform)
+        {
+            case "win32":
+                vcArgs = "x86";
+                break;
+            case "x64":
+                vcArgs = "amd64";
+                break;
+            case "ARM":
+                vcArgs = "amd64_arm";
+                break;
+            case "ARM64":
+                vcArgs = "amd64_arm64";
+                break;
+        }
+
+        if (!string.IsNullOrEmpty(vcArgs))
+        {
+            SortedList env = LoadEnvironmentFromScript(vcVarsAllBat, vcArgs);
+            ApplyEnvironment(process, env);
+
+            // Re-append any extra directories that were in NAnt's PATH but were
+            // stripped from the minimal PATH used when running vcvarsall.bat
+            // (e.g. the locally-downloaded NASM directory).
+            string nasmDir = Properties["nasmDir"];
+            if (!string.IsNullOrEmpty(nasmDir) && Directory.Exists(nasmDir))
+            {
+                string existing = process.StartInfo.EnvironmentVariables["PATH"] ?? "";
+                process.StartInfo.EnvironmentVariables["PATH"] = existing + ";" + nasmDir;
+            }
+
+            string nmake = FindExecutableOnPath("nmake.exe", (string)env["PATH"]);
+            if (!string.IsNullOrEmpty(nmake))
+                process.StartInfo.FileName = nmake;
+        }
+    }
+}
+
+[TaskName("LoadVcEnvironment")]
+public class LoadVcEnvironment : Task
+{
+    FileInfo _envScript;
+    string _envArgs;
+
+    [TaskAttribute("env-script", Required=true)]
+    public FileInfo EnvScript
+    {
+        get { return _envScript; }
+        set { _envScript = value; }
+    }
+
+    [TaskAttribute("env-args", Required=true)]
+    public string EnvArgs
+    {
+        get { return _envArgs; }
+        set { _envArgs = value; }
+    }
+
+    protected override void ExecuteTask()
+    {
+        SortedList env = ExternalAppTask.LoadEnvironmentFromScript(EnvScript.FullName, EnvArgs);
+        foreach(DictionaryEntry e in env)
+        {
+            Environment.SetEnvironmentVariable((string)e.Key, (string)e.Value);
         }
     }
 }
@@ -549,6 +737,18 @@ public class Python : ExternalAppTask
     {
         get
         {
+            // Check common fixed install locations first
+            foreach (string candidate in new[] {
+                @"C:\Python312\python.exe",
+                @"C:\Python311\python.exe",
+                @"C:\Python310\python.exe",
+                @"C:\Python39\python.exe",
+            })
+            {
+                if (File.Exists(candidate))
+                    return candidate;
+            }
+
             string localAppData = System.Environment.GetEnvironmentVariable("LOCALAPPDATA");
             if (string.IsNullOrEmpty(localAppData))
                 return null;
@@ -572,7 +772,7 @@ public class Python : ExternalAppTask
         {
             if (_appName == null)
             {
-                return _appName = Properties["PythonExe"] ?? Python3Exe ?? base.ProgramFileName;
+                return _appName = Python3Exe ?? Properties["PythonExe"] ?? base.ProgramFileName;
             }
             else
                 return _appName;
@@ -606,6 +806,24 @@ public class Perl : ExternalAppTask
     public override string ProgramArguments
     {
         get { return ""; }
+    }
+
+    protected override void PrepareProcess(Process process)
+    {
+        base.PrepareProcess(process);
+
+        // Ensure the downloaded NASM directory is on PATH so that OpenSSL's
+        // Configure script can find nasm.exe (required since OpenSSL 3.x).
+        string nasmDir = Properties["nasmDir"];
+        if (!string.IsNullOrEmpty(nasmDir) && Directory.Exists(nasmDir))
+        {
+            // Accessing EnvironmentVariables clones the current environment.
+            string existing = process.StartInfo.EnvironmentVariables.ContainsKey("PATH")
+                ? process.StartInfo.EnvironmentVariables["PATH"]
+                : Environment.GetEnvironmentVariable("PATH") ?? "";
+            if (existing.IndexOf(nasmDir, StringComparison.OrdinalIgnoreCase) < 0)
+                process.StartInfo.EnvironmentVariables["PATH"] = existing + ";" + nasmDir;
+        }
     }
 }
 
@@ -811,6 +1029,10 @@ public class CMake : ExternalAppTask
             {
                 sb.AppendFormat(" -G \"{0}\"", Properties["cmakeGenerator"]);
                 sb.AppendFormat(" -A \"{0}\"", Properties["cmakePlatform"]);
+
+                string policyVersionMinimum = Properties["cmakePolicyVersionMinimum"];
+                if (!string.IsNullOrEmpty(policyVersionMinimum))
+                    sb.AppendFormat(" \"-DCMAKE_POLICY_VERSION_MINIMUM={0}\"", policyVersionMinimum);
             }
 
             foreach(Option o in AppProperties)
@@ -986,54 +1208,7 @@ public class NAntWithEnv : NAnt.Core.Tasks.NAntTask
 
    SortedList LoadEnv()
    {
-     if (!System.IO.File.Exists(EnvScript.FullName))
-       throw new System.IO.FileNotFoundException("Environment script file not found", EnvScript.FullName);
-
-     ProcessStartInfo psi = new ProcessStartInfo(Environment.GetEnvironmentVariable("COMSPEC"),
-                                        "/C \"" + EnvScript.FullName + "\" " + EnvArgs +" && echo.!.!.! && set");
-     psi.UseShellExecute = false;
-     psi.RedirectStandardOutput = true;
-
-     using(Process p = Process.Start(psi))
-     {
-        bool inSet = false;
-        string line;
-        SortedList sl = new SortedList();
-
-        while (null != (line = p.StandardOutput.ReadLine()))
-        {
-          if (!inSet)
-          {
-            if (line.StartsWith("!.!.!"))
-            {
-              inSet = true;
-              continue;
-            }
-
-            line = line.Trim('*').Trim();
-
-            if (line.Length > 0 && !line.StartsWith("Visual Studio") && !line.StartsWith("Copyright"))
-              Log(Level.Info, line);
-
-            continue;
-          }
-
-          int nIs = line.IndexOf('=');
-          if (nIs <= 0)
-            continue;
-
-          string k = line.Substring(0, nIs);
-          string v = line.Substring(nIs+1);
-
-          sl[k] = v;
-        }
-
-        p.WaitForExit();
-        if (p.ExitCode != 0)
-          throw new InvalidOperationException("Environment script failed");
-
-        return sl;
-     }
+     return ExternalAppTask.LoadEnvironmentFromScript(EnvScript.FullName, EnvArgs);
    }
 
    protected override void ExecuteTask()
@@ -1108,6 +1283,15 @@ public class VSWhere : ExternalAppTask
     {
         if (!string.IsNullOrEmpty(Property))
         {
+            foreach (var edition in new[] { "Enterprise", "Professional", "Community", "BuildTools" })
+            {
+                string p;
+                if (File.Exists(p = @"C:\Program Files\Microsoft Visual Studio\18\" + edition + @"\VC\Auxiliary\Build\vcvarsall.bat"))
+                {
+                    Properties[Property] = p;
+                    return;
+                }
+            }
             foreach (var edition in new[] { "Enterprise", "Professional", "Community", "BuildTools" })
             {
                 string p;

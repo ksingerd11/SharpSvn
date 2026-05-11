@@ -23,57 +23,52 @@ using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+[TestClass]
+public class CapabilitiesTests : TestBase
 {
-    [TestClass]
-    public class CapabilitiesTests : TestBase
+    [TestMethod]
+    public void Capabilities_Local()
     {
-        [TestMethod]
-        public void Capabilities_Local()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri emptyUri = sbox.CreateRepository(SandBoxRepository.Empty);
-            Uri emptyNoMergeUri = sbox.CreateRepository(SandBoxRepository.EmptyNoMerge);
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri emptyUri = sbox.CreateRepository(SandBoxRepository.Empty);
+        Uri emptyNoMergeUri = sbox.CreateRepository(SandBoxRepository.EmptyNoMerge);
 
 
-            using (SvnClient client = new SvnClient())
-            {
-                Collection<SvnCapability> caps;
-                SvnGetCapabilitiesArgs aa = new SvnGetCapabilitiesArgs();
-                aa.RetrieveAllCapabilities = true;
+        using SvnClient client = new SvnClient();
+        Collection<SvnCapability> caps;
+        SvnGetCapabilitiesArgs aa = new SvnGetCapabilitiesArgs();
+        aa.RetrieveAllCapabilities = true;
 
-                IEnumerable<SvnCapability> rCaps = new SvnCapability[] { SvnCapability.MergeInfo };
-                Assert.That(client.GetCapabilities(emptyUri, rCaps, out caps));
+        IEnumerable<SvnCapability> rCaps = new SvnCapability[] { SvnCapability.MergeInfo };
+        Assert.That(client.GetCapabilities(emptyUri, rCaps, out caps));
 
-                Assert.That(caps.Contains(SvnCapability.MergeInfo));
+        Assert.That(caps.Contains(SvnCapability.MergeInfo));
 
-                Assert.That(client.GetCapabilities(emptyNoMergeUri, rCaps, out caps));
+        Assert.That(client.GetCapabilities(emptyNoMergeUri, rCaps, out caps));
 
-                Assert.That(!caps.Contains(SvnCapability.MergeInfo));
-                Assert.That(caps.Count, Is.EqualTo(0));
-                
-                Assert.That(client.GetCapabilities(emptyNoMergeUri, aa, out caps));
-                Assert.That(caps.Count, Is.GreaterThanOrEqualTo(5));
+        Assert.That(!caps.Contains(SvnCapability.MergeInfo));
+        Assert.That(caps.Count, Is.EqualTo(0));
 
-                Assert.That(client.GetCapabilities(emptyUri, aa, out caps));
-                Assert.That(caps.Count, Is.GreaterThanOrEqualTo(6));
-            }
-        }
+        Assert.That(client.GetCapabilities(emptyNoMergeUri, aa, out caps));
+        Assert.That(caps.Count, Is.GreaterThanOrEqualTo(5));
 
-        [TestMethod]
-        public void Capabilities_SharpCaps()
-        {
-            using (SvnClient client = NewSvnClient(false, false))
-            {
-                Collection<SvnCapability> caps;
+        Assert.That(client.GetCapabilities(emptyUri, aa, out caps));
+        Assert.That(caps.Count, Is.GreaterThanOrEqualTo(6));
+    }
 
-                SvnGetCapabilitiesArgs ca = new SvnGetCapabilitiesArgs();
-                ca.RetrieveAllCapabilities = true;
-                Assert.That(client.GetCapabilities(new Uri("https://svn.apache.org/repos/asf/subversion/trunk"), ca, out caps));
+    [TestMethod]
+    public void Capabilities_SharpCaps()
+    {
+        using SvnClient client = NewSvnClient(false, false);
+        Collection<SvnCapability> caps;
 
-                Assert.That(caps.Contains(SvnCapability.MergeInfo));
-                Assert.That(caps.Count, Is.GreaterThanOrEqualTo(5));
-            }
-        }
+        SvnGetCapabilitiesArgs ca = new SvnGetCapabilitiesArgs();
+        ca.RetrieveAllCapabilities = true;
+        Assert.That(client.GetCapabilities(new Uri("https://svn.apache.org/repos/asf/subversion/trunk"), ca, out caps));
+
+        Assert.That(caps.Contains(SvnCapability.MergeInfo));
+        Assert.That(caps.Count, Is.GreaterThanOrEqualTo(5));
     }
 }

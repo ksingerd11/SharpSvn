@@ -25,107 +25,104 @@ using SharpSvn.TestBuilder;
 
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests for the Client::Export method
+/// </summary>
+[TestClass]
+public class ExportTests : TestBase
 {
     /// <summary>
-    /// Tests for the Client::Export method
+    /// Test export operation from a repository
     /// </summary>
-    [TestClass]
-    public class ExportTests : TestBase
+    [TestMethod]
+    public void Export_Repos()
     {
-        /// <summary>
-        /// Test export operation from a repository
-        /// </summary>
-        [TestMethod]
-        public void Export_Repos()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri reposUri = sbox.CreateRepository(SandBoxRepository.Default);
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri reposUri = sbox.CreateRepository(SandBoxRepository.Default);
 
-            string wc = sbox.GetTempDir();
-            Directory.Delete(wc);
-            this.Client.Export(reposUri, wc);
+        string wc = sbox.GetTempDir();
+        Directory.Delete(wc);
+        this.Client.Export(reposUri, wc);
 
-            Assert.That(File.Exists(Path.Combine(wc, "trunk/README.txt")),
-                "Exported file not there");
-            Assert.That(!Directory.Exists(Path.Combine(wc, SvnClient.AdministrativeDirectoryName)),
-                ".svn directory found");
-        }
-        /// <summary>
-        /// Test export operation from a working copy
-        /// </summary>
-        [TestMethod]
-        public void Export_ExportWc()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.AnkhSvnCases);
-            string WcPath = sbox.Wc;
-            string wc = Path.Combine(sbox.GetTempDir(), "wc");
+        Assert.That(File.Exists(Path.Combine(wc, "trunk/README.txt")),
+            "Exported file not there");
+        Assert.That(!Directory.Exists(Path.Combine(wc, SvnClient.AdministrativeDirectoryName)),
+            ".svn directory found");
+    }
+    /// <summary>
+    /// Test export operation from a working copy
+    /// </summary>
+    [TestMethod]
+    public void Export_ExportWc()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.AnkhSvnCases);
+        string WcPath = sbox.Wc;
+        string wc = Path.Combine(sbox.GetTempDir(), "wc");
 
-            string formresx = Path.Combine(WcPath, "Form.resx");
-            File.WriteAllText(formresx, "Replaced Data!");
+        string formresx = Path.Combine(WcPath, "Form.resx");
+        File.WriteAllText(formresx, "Replaced Data!");
 
-            this.Client.Export(WcPath, wc);
+        this.Client.Export(WcPath, wc);
 
-            Assert.That(File.Exists(Path.Combine(wc, "Form.cs")),
-                "Exported file not there");
-            Assert.That(!Directory.Exists(Path.Combine(wc, SvnClient.AdministrativeDirectoryName)),
-                ".svn directory found");
+        Assert.That(File.Exists(Path.Combine(wc, "Form.cs")),
+            "Exported file not there");
+        Assert.That(!Directory.Exists(Path.Combine(wc, SvnClient.AdministrativeDirectoryName)),
+            ".svn directory found");
 
-            Assert.That(File.ReadAllText(Path.Combine(wc, "Form.resx")), Is.EqualTo("Replaced Data!"));
-        }
+        Assert.That(File.ReadAllText(Path.Combine(wc, "Form.resx")), Is.EqualTo("Replaced Data!"));
+    }
 
-        [TestMethod]
-        public void Export_ExportNonRecursive()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.AnkhSvnCases);
-            string WcPath = sbox.Wc;
+    [TestMethod]
+    public void Export_ExportNonRecursive()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.AnkhSvnCases);
+        string WcPath = sbox.Wc;
 
-            string wc = Path.Combine(sbox.GetTempDir(), "wc");
-            SvnExportArgs a = new SvnExportArgs();
-            a.Depth = SvnDepth.Empty;
-            SvnUpdateResult r;
-            this.Client.Export(WcPath, wc, a, out r);
-            Assert.That(Directory.GetDirectories(wc).Length, Is.EqualTo(0));
-        }
+        string wc = Path.Combine(sbox.GetTempDir(), "wc");
+        SvnExportArgs a = new SvnExportArgs();
+        a.Depth = SvnDepth.Empty;
+        SvnUpdateResult r;
+        this.Client.Export(WcPath, wc, a, out r);
+        Assert.That(Directory.GetDirectories(wc).Length, Is.EqualTo(0));
+    }
 
-        [TestMethod]
-        public void Export_Forced()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Default);
+    [TestMethod]
+    public void Export_Forced()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Default);
 
-            string WcPath = sbox.Wc;
-            Uri WcUri = sbox.Uri;
+        string WcPath = sbox.Wc;
+        Uri WcUri = sbox.Uri;
 
-            string exportDir = Path.Combine(sbox.GetTempDir("ExportTests"), "exportTo");
+        string exportDir = Path.Combine(sbox.GetTempDir("ExportTests"), "exportTo");
 
-            using (SvnClient client = NewSvnClient(true, false))
-            {
-                string file = Path.Combine(WcPath, "ExportFile");
-                TouchFile(file);
-                client.Add(file);
+        using SvnClient client = NewSvnClient(true, false);
+        string file = Path.Combine(WcPath, "ExportFile");
+        TouchFile(file);
+        client.Add(file);
 
-                client.Commit(WcPath);
+        client.Commit(WcPath);
 
-                Assert.That(Directory.Exists(exportDir), Is.False);
+        Assert.That(Directory.Exists(exportDir), Is.False);
 
-                client.Export(WcUri, exportDir);
-                Assert.That(Directory.Exists(exportDir), Is.True);
-                Assert.That(File.Exists(Path.Combine(exportDir, "ExportFile")));
-                Assert.That(!Directory.Exists(Path.Combine(exportDir, ".svn")));
+        client.Export(WcUri, exportDir);
+        Assert.That(Directory.Exists(exportDir), Is.True);
+        Assert.That(File.Exists(Path.Combine(exportDir, "ExportFile")));
+        Assert.That(!Directory.Exists(Path.Combine(exportDir, ".svn")));
 
-                ForcedDeleteDirectory(exportDir);
+        ForcedDeleteDirectory(exportDir);
 
-                Assert.That(Directory.Exists(exportDir), Is.False);
+        Assert.That(Directory.Exists(exportDir), Is.False);
 
-                client.Export(new SvnPathTarget(WcPath), exportDir);
-                Assert.That(Directory.Exists(exportDir), Is.True);
-                Assert.That(File.Exists(Path.Combine(exportDir, "ExportFile")));
+        client.Export(new SvnPathTarget(WcPath), exportDir);
+        Assert.That(Directory.Exists(exportDir), Is.True);
+        Assert.That(File.Exists(Path.Combine(exportDir, "ExportFile")));
 
-                ForcedDeleteDirectory(exportDir);
-            }
-        }
+        ForcedDeleteDirectory(exportDir);
     }
 }

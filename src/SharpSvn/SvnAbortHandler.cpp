@@ -49,11 +49,13 @@ public:
         : InvalidOperationException(message)
     {
     }
+#if !defined(SHARPSVN_NETCORE)
 protected:
     SvnThreadAbortException(System::Runtime::Serialization::SerializationInfo^ info, System::Runtime::Serialization::StreamingContext context)
         : InvalidOperationException(info, context)
     {
     }
+#endif
 };
 
 /*

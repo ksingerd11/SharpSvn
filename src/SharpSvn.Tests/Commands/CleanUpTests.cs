@@ -25,25 +25,22 @@ using SharpSvn.TestBuilder;
 
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests the Client::Cleanup method
+/// </summary>
+[TestClass]
+public class CleanupTests : TestBase
 {
-    /// <summary>
-    /// Tests the Client::Cleanup method
-    /// </summary>
-    [TestClass]
-    public class CleanupTests : TestBase
+    [TestMethod]
+    public void Cleanup_Basic()
     {
-        [TestMethod]
-        public void Cleanup_Basic()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Default);
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Default);
 
-            using (SvnClient client = NewSvnClient(false, false))
-            {
-                client.CleanUp(sbox.Wc);
-            }
-        }
-
+        using SvnClient client = NewSvnClient(false, false);
+        client.CleanUp(sbox.Wc);
     }
+
 }

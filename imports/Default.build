@@ -50,7 +50,7 @@
   <property name="lz4Version" value="1.10.0" overwrite="false" />
 
   <!-- Building only -->
-  <property name="cmakeVersion" value="3.31.10" overwrite="false" />
+  <property name="cmakeVersion" value="4.3.2" overwrite="false" />
   <property name="sconsVersion" value="4.9.1" overwrite="false" />
 
   <!-- For testcase -->
@@ -58,6 +58,7 @@
   <property name="libeventVersion" value="2.1.12-stable" overwrite="false" />
   <property name="pthreadwin32Version" value="2.9.1" overwrite="false" />
   <property name="memcachedVersion" value="1.6.38" overwrite="false" />
+  <property name="importsBuildFile" value="${project::get-buildfile-path()}" overwrite="false" />
 
   <!-- Prefix to use for dependency DLL's -->
   <property name="dllPrefix" value="SharpSvn-" overwrite="false" />

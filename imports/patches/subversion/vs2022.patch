@@ -11,6 +11,11 @@ Index: build/generator/gen_win_dependencies.py
 +          self.sln_version = '12.00'
 +          self.vcproj_version = '14.3'
 +          self.vcproj_extension = '.vcxproj'
++        elif val == '2026' or val == '18':
++          self.vs_version = '2026'
++          self.sln_version = '12.00'
++          self.vcproj_version = '14.5'
++          self.vcproj_extension = '.vcxproj'
          elif re.match(r'^20\d+$', val):
            print('WARNING: Unknown VS.NET version "%s",'
                  ' assuming VS2012. Your VS can probably upgrade')

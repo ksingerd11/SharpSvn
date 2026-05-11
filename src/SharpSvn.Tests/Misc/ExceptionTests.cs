@@ -23,57 +23,56 @@ using SharpSvn.TestBuilder;
 using SharpSvn;
 using SharpSvn.Tests.Commands;
 
-namespace SharpSvn.Tests.Misc
+namespace SharpSvn.Tests.Misc;
+
+/// <summary>
+/// Summary description for ExceptionTest.
+/// </summary>
+[TestClass]
+public class ExceptionTests : TestBase
 {
     /// <summary>
-    /// Summary description for ExceptionTest.
+    /// Attempt to add a file that is not in a vc dir.
     /// </summary>
-    [TestClass]
-    public class ExceptionTests : TestBase
+    [TestMethod]
+    [ExpectedException(typeof(SvnInvalidNodeKindException))]
+    public void TestAddFileInNonVersionedDir()
     {
-        /// <summary>
-        /// Attempt to add a file that is not in a vc dir.
-        /// </summary>
-        [TestMethod]
-        [ExpectedException(typeof(SvnInvalidNodeKindException))]
-        public void TestAddFileInNonVersionedDir()
-        {
-            string tempFile = Path.GetTempFileName();
-            this.Client.Add(tempFile);
-        }
-
-        /// <summary>
-        /// Attempt to commit an out of date resource.
-        /// </summary>
-        /*[TestMethod]
-        [ExpectedException(typeof(ResourceOutOfDateException))]
-        public void TestResourceOutOfDate()
-        {
-            string wc2 = null;
-
-            try
-            {
-                wc2 = this.FindDirName( Path.Combine( TestBase.BASEPATH, TestBase.WC_NAME ) );
-                Zip.ExtractZipResource( wc2, this.GetType(), this.WC_FILE );
-                this.RenameAdminDirs( wc2 );
-
-                using (StreamWriter w = new StreamWriter( Path.Combine( this.WcPath, "Form.cs" ), true ) )
-                    w.Write( "Moo" );
-
-                this.RunCommand( "svn", "ci -m \"\" " + this.WcPath );
-
-                using (StreamWriter w2 = new StreamWriter( Path.Combine( wc2, "Form.cs" ), true ) )
-                    w2.Write( "Moo" );
-
-                this.Client.Commit( wc2 });
-            }
-            finally
-            {
-                if ( wc2 != null )
-                    PathUtils.RecursiveDelete( wc2 );
-
-            }
-        }*/
-
+        string tempFile = Path.GetTempFileName();
+        this.Client.Add(tempFile);
     }
+
+    /// <summary>
+    /// Attempt to commit an out of date resource.
+    /// </summary>
+    /*[TestMethod]
+    [ExpectedException(typeof(ResourceOutOfDateException))]
+    public void TestResourceOutOfDate()
+    {
+        string wc2 = null;
+
+        try
+        {
+            wc2 = this.FindDirName( Path.Combine( TestBase.BASEPATH, TestBase.WC_NAME ) );
+            Zip.ExtractZipResource( wc2, this.GetType(), this.WC_FILE );
+            this.RenameAdminDirs( wc2 );
+
+            using (StreamWriter w = new StreamWriter( Path.Combine( this.WcPath, "Form.cs" ), true ) )
+                w.Write( "Moo" );
+
+            this.RunCommand( "svn", "ci -m \"\" " + this.WcPath );
+
+            using (StreamWriter w2 = new StreamWriter( Path.Combine( wc2, "Form.cs" ), true ) )
+                w2.Write( "Moo" );
+
+            this.Client.Commit( wc2 });
+        }
+        finally
+        {
+            if ( wc2 != null )
+                PathUtils.RecursiveDelete( wc2 );
+
+        }
+    }*/
+
 }

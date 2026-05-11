@@ -24,6 +24,13 @@
       SourceUpdated   ="$(SharpSvnUpdatedResource)"
       KeyContainer    ="%(Link.KeyContainer)"
       KeyFile         ="$(LinkKeyFile)"
+      StrongNameToolPath="$(TargetFrameworkSDKToolsDirectory)sn.exe"
+      CompanyName     ="$(ForceAssemblyCompany)"
+      FileDescription ="$(ForceAssemblyDescription)"
+      ProductName     ="$(ForceAssemblyProduct)"
+      LegalCopyright  ="$(ForceAssemblyCopyright)"
+      FileVersion     ="$(ForceAssemblyFileVersion)"
+      ProductVersion  ="$(ForceAssemblyInformationalVersion)"
 
       Condition="%(Link.OutputFile) != ''"/>
   </Target>

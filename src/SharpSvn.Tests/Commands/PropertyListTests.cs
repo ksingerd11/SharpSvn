@@ -25,34 +25,33 @@ using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests Client::PropList
+/// </summary>
+[TestClass]
+public class PropListTests : TestBase
 {
-    /// <summary>
-    /// Tests Client::PropList
-    /// </summary>
-    [TestClass]
-    public class PropListTests : TestBase
+    [TestMethod]
+    public void PropList_BasicProplist()
     {
-        [TestMethod]
-        public void PropList_BasicProplist()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.Empty);
-            Client.SetProperty(sbox.Wc, "foo", "bar");
-            Client.SetProperty(sbox.Wc, "kung", "foo");
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.Empty);
+        Client.SetProperty(sbox.Wc, "foo", "bar");
+        Client.SetProperty(sbox.Wc, "kung", "foo");
 
-            Collection<SvnPropertyListEventArgs> eList;
+        Collection<SvnPropertyListEventArgs> eList;
 
-            Assert.That(Client.GetPropertyList(new SvnPathTarget(sbox.Wc), out eList));
+        Assert.That(Client.GetPropertyList(new SvnPathTarget(sbox.Wc), out eList));
 
-            Assert.That(eList.Count, Is.EqualTo(1));
+        Assert.That(eList.Count, Is.EqualTo(1));
 
-            Assert.That(eList[0].Properties.Count, Is.EqualTo(2),
-                "Wrong number of properties");
-            Assert.That(eList[0].Properties["foo"].ToString(), Is.EqualTo("bar"),
-                "Wrong property");
-            Assert.That(eList[0].Properties["kung"].ToString(), Is.EqualTo("foo"),
-                "Wrong property");
-        }
+        Assert.That(eList[0].Properties.Count, Is.EqualTo(2),
+            "Wrong number of properties");
+        Assert.That(eList[0].Properties["foo"].ToString(), Is.EqualTo("bar"),
+            "Wrong property");
+        Assert.That(eList[0].Properties["kung"].ToString(), Is.EqualTo("foo"),
+            "Wrong property");
     }
 }

@@ -24,36 +24,35 @@ using SharpSvn.TestBuilder;
 using SharpSvn.Implementation;
 using System.Reflection;
 
-namespace SharpSvn.Tests
+namespace SharpSvn.Tests;
+
+[TestClass]
+public class SvnBdbTest : Commands.TestBase
 {
-    [TestClass]
-    public class SvnBdbTest : Commands.TestBase
+
+    [TestMethod]
+    public void CreateBdbRepos()
     {
+        SvnSandBox sbox = new SvnSandBox(this);
+        string path = sbox.GetTempDir();
 
-        [TestMethod]
-        public void CreateBdbRepos()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            string path = sbox.GetTempDir();
+        SvnRepositoryClient reposClient = new SvnRepositoryClient();
 
-            SvnRepositoryClient reposClient = new SvnRepositoryClient();
+        SvnCreateRepositoryArgs ra = new SvnCreateRepositoryArgs();
+        ra.RepositoryType = SvnRepositoryFileSystem.BerkeleyDB;
+        reposClient.CreateRepository(path, ra);
 
-            SvnCreateRepositoryArgs ra = new SvnCreateRepositoryArgs();
-            ra.RepositoryType = SvnRepositoryFileSystem.BerkeleyDB;
-            reposClient.CreateRepository(path, ra);
+        Assert.That(File.Exists(Path.Combine(path, "db/DB_CONFIG")));
 
-            Assert.That(File.Exists(Path.Combine(path, "db/DB_CONFIG")));
+        reposClient.HotCopy(path, sbox.GetTempDir());
 
-            reposClient.HotCopy(path, sbox.GetTempDir());
+        reposClient.SetRevisionProperty(path, 0, SvnPropertyNames.SvnLog, "Hahaha");
+    }
 
-            reposClient.SetRevisionProperty(path, 0, SvnPropertyNames.SvnLog, "Hahaha");
-        }
-
-        [TestMethod]
-        public void TestAllProps()
-        {
-            Assert.That(SvnPropertyNames.AllSvnRevisionProperties.Contains(SvnPropertyNames.SvnAuthor));
-            Assert.That(SvnPropertyNames.TortoiseSvnDirectoryProperties.Contains(SvnPropertyNames.TortoiseSvnLogMinSize));
-        }
+    [TestMethod]
+    public void TestAllProps()
+    {
+        Assert.That(SvnPropertyNames.AllSvnRevisionProperties.Contains(SvnPropertyNames.SvnAuthor));
+        Assert.That(SvnPropertyNames.TortoiseSvnDirectoryProperties.Contains(SvnPropertyNames.TortoiseSvnLogMinSize));
     }
 }

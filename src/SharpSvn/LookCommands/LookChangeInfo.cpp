@@ -172,7 +172,7 @@ bool SvnLookClient::ChangeInfo(SvnLookOrigin^ lookOrigin, SvnChangeInfoArgs^ arg
 
         if (args->RetrieveChangedPaths)
         {
-            System::Diagnostics::Debug::Assert(root != nullptr);
+            System::Diagnostics::Debug::Assert((bool)(root != nullptr), System::String::Empty);
 
             svn_repos_node_t* tree;
             {

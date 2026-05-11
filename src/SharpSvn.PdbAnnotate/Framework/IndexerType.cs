@@ -1,9 +1,9 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Text;
 
-namespace SharpSvn.PdbAnnotate.Framework
-{
+namespace SharpSvn.PdbAnnotate.Framework;
+
 	/// <summary>
 	/// 
 	/// </summary>
@@ -22,11 +22,15 @@ namespace SharpSvn.PdbAnnotate.Framework
 		public IndexerTypeData(string path, string type, string info)
 		{
 			if (path == null)
-				throw new ArgumentNullException("path");
-			else if (type == null)
-				throw new ArgumentNullException("type");
+        {
+            throw new ArgumentNullException("path");
+        }
+        else if (type == null)
+        {
+            throw new ArgumentNullException("type");
+        }
 
-			_path = path;
+        _path = path;
 			_type = type;
 			_info = string.IsNullOrEmpty(info) ? "" : info;
 		}
@@ -56,4 +60,3 @@ namespace SharpSvn.PdbAnnotate.Framework
 			get { return _info; }
 		}
 	}
-}

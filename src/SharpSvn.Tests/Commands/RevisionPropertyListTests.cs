@@ -24,33 +24,32 @@ using Is = NUnit.Framework.Is;
 using SharpSvn.TestBuilder;
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests Client::RevPropList
+/// </summary>
+[TestClass]
+public class RevPropListTests : TestBase
 {
     /// <summary>
-    /// Tests Client::RevPropList
+    /// Sets two properties on a repos and tries to retrieve them with Client::RevPropList
     /// </summary>
-    [TestClass]
-    public class RevPropListTests : TestBase
+    [TestMethod]
+    public void RevProp_TestBasic()
     {
-        /// <summary>
-        /// Sets two properties on a repos and tries to retrieve them with Client::RevPropList
-        /// </summary>
-        [TestMethod]
-        public void RevProp_TestBasic()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
+        SvnSandBox sbox = new SvnSandBox(this);
 
-            Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
-            sbox.InstallRevpropHook(ReposUrl);
+        Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
+        sbox.InstallRevpropHook(ReposUrl);
 
-            this.RunCommand("svn", "ps --revprop -r HEAD foo bar " + ReposUrl);
-            this.RunCommand("svn", "ps --revprop -r HEAD kung foo " + ReposUrl);
+        this.RunCommand("svn", "ps --revprop -r HEAD foo bar " + ReposUrl);
+        this.RunCommand("svn", "ps --revprop -r HEAD kung foo " + ReposUrl);
 
-            SvnPropertyCollection spc;
-            Assert.That(Client.GetRevisionPropertyList(ReposUrl, SvnRevision.Head, out spc));
+        SvnPropertyCollection spc;
+        Assert.That(Client.GetRevisionPropertyList(ReposUrl, SvnRevision.Head, out spc));
 
-            Assert.That(spc["foo"].ToString(), Is.EqualTo("bar"), "Wrong property value");
-            Assert.That(spc["kung"].ToString(), Is.EqualTo("foo"), "Wrong property value");
-        }
+        Assert.That(spc["foo"].ToString(), Is.EqualTo("bar"), "Wrong property value");
+        Assert.That(spc["kung"].ToString(), Is.EqualTo("foo"), "Wrong property value");
     }
 }

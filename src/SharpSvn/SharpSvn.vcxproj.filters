@@ -182,6 +182,9 @@
     <ClInclude Include="SvnCommandLineArgumentCollection.h">
       <Filter>Svn\Types</Filter>
     </ClInclude>
+    <ClInclude Include="SvnConflictInfo.h">
+      <Filter>Svn\Types</Filter>
+    </ClInclude>
     <ClInclude Include="SvnCommitItem.h">
       <Filter>Svn\Types</Filter>
     </ClInclude>
@@ -808,6 +811,9 @@
       <Filter>SvnClient\Sources</Filter>
     </ClCompile>
     <ClCompile Include="Commands\Commit.cpp">
+      <Filter>SvnClient\Sources</Filter>
+    </ClCompile>
+    <ClCompile Include="Commands\ConflictInfo.cpp">
       <Filter>SvnClient\Sources</Filter>
     </ClCompile>
     <ClCompile Include="Commands\Copy.cpp">

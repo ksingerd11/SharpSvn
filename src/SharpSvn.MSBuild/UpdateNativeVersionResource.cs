@@ -4,464 +4,414 @@ using System.Diagnostics;
 using System.Globalization;
 using System.IO;
 using System.Reflection;
-using System.Reflection.Emit;
+using System.Text;
 using Microsoft.Build.Framework;
-using Microsoft.Win32;
 
-namespace SharpSvn.MSBuild
+namespace SharpSvn.MSBuild;
+
+public class UpdateNativeVersionResource : ITask
 {
-    public class UpdateNativeVersionResource : ITask
+    const int RtVersion = 16;
+    const int VsFfiSignature = unchecked((int)0xFEEF04BD);
+    const int VsFfiStrucVersion = 0x00010000;
+    const int VsFfiFileFlagsMask = 0x0000003F;
+    const int VosNtWindows32 = 0x00040004;
+    const int VftDll = 0x00000002;
+
+    public IBuildEngine BuildEngine { get; set; }
+
+    [Required]
+    public ITaskItem Source { get; set; }
+
+    [Required]
+    public string TempDir { get; set; }
+
+    public string KeyContainer { get; set; }
+
+    public ITaskItem KeyFile { get; set; }
+
+    public string StrongNameToolPath { get; set; }
+
+    public string CompanyName { get; set; }
+
+    public string FileDescription { get; set; }
+
+    public string ProductName { get; set; }
+
+    public string LegalCopyright { get; set; }
+
+    public string FileVersion { get; set; }
+
+    public string ProductVersion { get; set; }
+
+    [Output]
+    public bool SourceUpdated { get; set; }
+
+    public ITaskHost HostObject { get; set; }
+
+    public bool Execute()
     {
-        public Microsoft.Build.Framework.IBuildEngine BuildEngine
-        { get; set; }
-
-        [Required]
-        public ITaskItem Source
-        { get; set; }
-
-        [Required]
-        public string TempDir
-        { get; set; }
-
-        public string KeyContainer
-        { get; set; }
-
-        public ITaskItem KeyFile
-        { get; set; }
-
-        [Output]
-        public bool SourceUpdated
-        { get; set; }
-
-        public Microsoft.Build.Framework.ITaskHost HostObject
-        { get; set; }
-
-        public bool Execute()
+        if (NativeMethods.GetFileVersionInfoSize(Source.ItemSpec) > 0)
         {
-            if (NativeMethods.GetFileVersionInfoSize(Source.ItemSpec) > 0)
-                return true; // Nothing to do
+            return true;
+        }
 
-            try
+        try
+        {
+            string sourcePath = Source.ItemSpec;
+            if (string.IsNullOrWhiteSpace(sourcePath) || !File.Exists(sourcePath))
             {
-
-                if (Directory.Exists(TempDir))
-                    Directory.Delete(TempDir, true);
-
-                Directory.CreateDirectory(TempDir);
-                string srcFile = Source.ItemSpec;
-                string tmpFile = Path.Combine(TempDir, Path.GetFileName(Source.ItemSpec));
-
-                Assembly myAssembly = typeof(UpdateNativeVersionResource).Assembly;
-                AppDomainSetup setup = new AppDomainSetup();
-                setup.ApplicationName = "GenerateVersionInfoViaAssembly";
-                setup.ApplicationBase = Path.GetDirectoryName(new Uri(myAssembly.CodeBase).LocalPath);
-                setup.AppDomainInitializer = new AppDomainInitializer(ResourceRefresh.OnRefreshVersionInfo);
-                setup.AppDomainInitializerArguments = new string[] { Source.ItemSpec, TempDir, tmpFile };
-
-                AppDomain dom = AppDomain.CreateDomain("AttributeRefresher", myAssembly.Evidence, setup);
-                AppDomain.Unload(dom); // Remove locks
-
-                byte[] versionInfo;
-                int size = NativeMethods.GetFileVersionInfoSize(tmpFile);
-                if (size >= 0 && NativeMethods.GetFileVersionInfo(tmpFile, size, out versionInfo))
-                {
-                    File.Delete(tmpFile);
-
-                    BuildEngine.LogMessageEvent(new BuildMessageEventArgs("Updating version resources", null, "UpdateNativeVersionResouce", MessageImportance.Normal));
-                    using (ResourceUpdateHandle resHandle = NativeMethods.BeginUpdateResource(srcFile, false))
-                    {
-                        if (resHandle != null)
-                        {
-                            bool ok = NativeMethods.UpdateResource(resHandle, (IntPtr)16, (IntPtr)1, 0, versionInfo, size);
-                            ok = resHandle.Commit() && ok;
-
-                            if (ok)
-                            {
-                                if (!string.IsNullOrEmpty(KeyContainer) || (KeyFile != null && !string.IsNullOrEmpty(KeyFile.ItemSpec)))
-                                {
-                                    BuildEngine.LogMessageEvent(new BuildMessageEventArgs("Resigning assembly", null, "UpdateNativeVersionResouce", MessageImportance.Normal));
-
-                                    if (!ResignAssemblyWithFileOrContainer(srcFile, (KeyFile != null) ? KeyFile.ItemSpec : null, KeyContainer))
-                                    {
-                                        BuildEngine.LogMessageEvent(new BuildMessageEventArgs("Resigning assembly failed", null, "UpdateNativeVersionResouce", MessageImportance.High));
-                                        return false;
-                                    }
-                                }
-
-                                SourceUpdated = true;
-                                return true;
-                            }
-                        }
-                    }
-                }
-                else
-                    File.Delete(tmpFile);
-
-                BuildEngine.LogMessageEvent(new BuildMessageEventArgs("Updating version resources failed", null, "UpdateNativeVersionResouce", MessageImportance.Normal));
-
+                Log("Assembly not found: " + sourcePath, MessageImportance.High);
                 return false;
             }
-            finally
+
+            VersionInfo versionInfo = VersionInfo.FromAssembly(
+                sourcePath,
+                CompanyName,
+                FileDescription,
+                ProductName,
+                LegalCopyright,
+                FileVersion,
+                ProductVersion);
+
+            byte[] versionResource = VersionResourceBuilder.Build(versionInfo);
+
+            Log("Updating version resources", MessageImportance.Normal);
+            using (ResourceUpdateHandle resHandle = NativeMethods.BeginUpdateResource(sourcePath, false))
             {
-                if (!SourceUpdated && File.Exists(Source.ItemSpec))
-                    File.Delete(Source.ItemSpec); // Ensure relinking in next build
-            }
-        }
-
-        internal static bool ResignAssemblyWithFileOrContainer(string assembly, string keyFile, string keyContainer)
-        {
-            if (!string.IsNullOrEmpty(keyContainer))
-            {
-                if (ResignAssemblyWithContainer(assembly, keyContainer))
-                    return true;
-            }
-
-            if (!string.IsNullOrEmpty(keyFile))
-                return ResignAssemblyWithFile(assembly, keyFile);
-            else
-                return string.IsNullOrEmpty(keyContainer);
-        }
-
-        /// <summary>
-        /// Res the sign assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly.</param>
-        /// <param name="strongNameFile">The strong name file.</param>
-        /// <returns></returns>
-        public static bool ResignAssemblyWithFile(string assembly, string strongNameFile)
-        {
-            if (string.IsNullOrEmpty(assembly))
-                throw new ArgumentNullException("assembly");
-            else if (string.IsNullOrEmpty(strongNameFile))
-                throw new ArgumentNullException("strongNameFile");
-            else if (!File.Exists(assembly))
-                throw new FileNotFoundException("Assembly not found", assembly);
-            else if (!File.Exists(strongNameFile))
-                throw new FileNotFoundException(string.Format(CultureInfo.InvariantCulture, "StrongNameFile not found: {0}", strongNameFile), strongNameFile);
-
-            ProcessStartInfo psi = new ProcessStartInfo(StrongNameToolPath, string.Format(CultureInfo.InvariantCulture, "-q -Ra \"{0}\" \"{1}\"", assembly, strongNameFile));
-            psi.UseShellExecute = false;
-            psi.WindowStyle = ProcessWindowStyle.Hidden;
-            psi.CreateNoWindow = true;
-            using (Process p = Process.Start(psi))
-            {
-                p.WaitForExit();
-
-                return p.ExitCode == 0;
-            }
-        }
-
-        static string _sdkPath;
-        /// <summary>
-        /// Gets the framework SDK dir.
-        /// </summary>
-        /// <value>The framework SDK dir.</value>
-        static string FrameworkSdkDir
-        {
-            get
-            {
-                if (_sdkPath == null)
+                if (resHandle == null || resHandle.IsInvalid)
                 {
-                    using (RegistryKey rk = Registry.LocalMachine.OpenSubKey("SOFTWARE\\Microsoft\\.NETFramework", false))
-                    {
-                        if (rk != null)
-                        {
-                            string primary = null;
-                            string fallback = null;
-                            string myVersion = ("sdkInstallRoot" + typeof(UpdateNativeVersionResource).Assembly.ImageRuntimeVersion);
-
-                            foreach (string name in rk.GetValueNames())
-                            {
-                                if (name.StartsWith("sdkinstallroot", StringComparison.OrdinalIgnoreCase))
-                                {
-                                    if (fallback == null)
-                                    {
-                                        string value = (string)rk.GetValue(name);
-
-                                        if (Directory.Exists(value))
-                                        {
-                                            fallback = name;
-                                        }
-                                    }
-
-                                    if (myVersion.StartsWith(name, StringComparison.OrdinalIgnoreCase))
-                                    {
-                                        string value = (string)rk.GetValue(name);
-
-                                        if (Directory.Exists(value))
-                                        {
-                                            if ((primary == null) || (name.Length > primary.Length))
-                                                primary = name;
-                                        }
-                                    }
-                                }
-                            }
-
-                            if (primary == null)
-                                primary = fallback;
-
-                            if (primary != null)
-                            {
-                                _sdkPath = (string)rk.GetValue(primary);
-                            }
-                        }
-                    }
+                    Log("Unable to open assembly resources for update", MessageImportance.High);
+                    return false;
                 }
-                return _sdkPath;
-            }
-        }
 
-        static string _snExe;
-        /// <summary>
-        /// Gets the sn.exe path.
-        /// </summary>
-        /// <value>The sn exe path.</value>
-        static string StrongNameToolPath
-        {
-            get
-            {
-                if (_snExe == null)
+                bool ok = NativeMethods.UpdateResource(
+                    resHandle,
+                    (IntPtr)RtVersion,
+                    (IntPtr)1,
+                    versionInfo.Language,
+                    versionResource,
+                    versionResource.Length);
+
+                ok = resHandle.Commit() && ok;
+
+                if (!ok)
                 {
-                    string sn = Path.Combine(FrameworkSdkDir ?? ".", "bin\\sn.exe");
-
-                    if (File.Exists(sn))
-                        _snExe = sn;
-                    else
-                        _snExe = FindFileInPath("sn.exe");
-
+                    Log("Updating version resources failed", MessageImportance.High);
+                    return false;
                 }
-                return _snExe;
-            }
-        }
-
-        static string FindFileInPath(string file, string pathList)
-        {
-            if (string.IsNullOrEmpty(file))
-                throw new ArgumentNullException("file");
-            else if (string.IsNullOrEmpty(pathList))
-                throw new ArgumentNullException("pathList");
-
-            string[] paths = pathList.Split(Path.PathSeparator);
-
-            foreach (string i in paths)
-            {
-                if (string.IsNullOrEmpty(i))
-                    continue;
-
-                string fullPath = Path.GetFullPath(Path.Combine(i, file));
-
-                if (File.Exists(fullPath))
-                    return fullPath;
             }
 
-            return null;
-        }
-
-        /// <summary>
-        /// Finds the file in the system environment variable path, the current directory, or the directory containing the current application.
-        /// </summary>
-        /// <param name="file">the filename of the file to search</param>
-        /// <returns>The full path of the file or <c>null</c> if the file is not found</returns>
-        static string FindFileInPath(string file)
-        {
-            if (string.IsNullOrEmpty(file))
-                throw new ArgumentNullException("file");
-
-            string path = Environment.GetEnvironmentVariable("PATH");
-
-            string result;
-            if (!string.IsNullOrEmpty(path))
+            if (!string.IsNullOrEmpty(KeyContainer) || (KeyFile != null && !string.IsNullOrEmpty(KeyFile.ItemSpec)))
             {
-                result = FindFileInPath(file, path);
+                Log("Resigning assembly", MessageImportance.Normal);
 
-                if (!string.IsNullOrEmpty(result))
-                    return result;
+                if (!ResignAssemblyWithFileOrContainer(sourcePath, KeyFile != null ? KeyFile.ItemSpec : null, KeyContainer))
+                {
+                    Log("Resigning assembly failed", MessageImportance.High);
+                    return false;
+                }
             }
 
-            result = FindFileInPath(file, ".");
-
-            if (!string.IsNullOrEmpty(result))
-                return result;
-
-            Assembly asm = Assembly.GetEntryAssembly();
-
-            if (asm == null)
-                asm = Assembly.GetCallingAssembly();
-
-            if (asm != null)
-                result = FindFileNextToAssembly(file, asm);
-
-            return result;
+            SourceUpdated = true;
+            return true;
         }
-
-        private static string FindFileNextToAssembly(string file, Assembly assembly)
+        catch (Exception e)
         {
-            if (string.IsNullOrEmpty(file))
-                throw new ArgumentNullException("file");
-            else if (assembly == null)
-                throw new ArgumentNullException("assembly");
-
-            if (assembly.CodeBase == null)
-                return null;
-
-            Uri uri = new Uri(assembly.CodeBase);
-
-            if (uri.IsFile || uri.IsUnc)
-                return FindFileInPath(file, Path.GetDirectoryName(uri.LocalPath));
-
-            return null;
+            Log("Updating version resources failed: " + e.Message, MessageImportance.High);
+            return false;
         }
-
-        /// <summary>
-        /// Res the sign assembly.
-        /// </summary>
-        /// <param name="assembly">The assembly.</param>
-        /// <param name="container">The container.</param>
-        /// <returns></returns>
-        public static bool ResignAssemblyWithContainer(string assembly, string container)
+        finally
         {
-            if (string.IsNullOrEmpty(assembly))
-                throw new ArgumentNullException("assembly");
-            else if (string.IsNullOrEmpty(container))
-                throw new ArgumentNullException("container");
-            else if (!File.Exists(assembly))
-                throw new FileNotFoundException("Assembly not found", assembly);
-
-            ProcessStartInfo psi = new ProcessStartInfo(StrongNameToolPath, string.Format(CultureInfo.InvariantCulture, "-q -Rca \"{0}\" \"{1}\"", assembly, container));
-            psi.UseShellExecute = false;
-            psi.WindowStyle = ProcessWindowStyle.Hidden;
-            psi.CreateNoWindow = true;
-            using (Process p = Process.Start(psi))
+            if (!SourceUpdated && Source != null && File.Exists(Source.ItemSpec))
             {
-                p.WaitForExit();
-
-                return p.ExitCode == 0;
+                File.Delete(Source.ItemSpec);
             }
         }
     }
 
-    public class ResourceRefresh
+    void Log(string message, MessageImportance importance)
     {
-        // Called in it's own appdomain
-        public static void OnRefreshVersionInfo(string[] args)
+        BuildEngine?.LogMessageEvent(new BuildMessageEventArgs(message, null, nameof(UpdateNativeVersionResource), importance));
+    }
+
+    bool ResignAssemblyWithFileOrContainer(string assembly, string keyFile, string keyContainer)
+    {
+        if (!string.IsNullOrEmpty(keyContainer))
         {
-            string fromFile = args[0];
-            string toDir = args[1];
-            string toFile = args[2];
-
-            Assembly asm = Assembly.ReflectionOnlyLoad(File.ReadAllBytes(fromFile));
-
-            string result = GenerateAttributeAssembly(asm, toDir);
+            if (ResignAssembly(assembly, "-q -Rca \"" + assembly + "\" \"" + keyContainer + "\""))
+            {
+                return true;
+            }
         }
 
-        private static string GenerateAttributeAssembly(Assembly assembly, string outputDirectory)
+        if (!string.IsNullOrEmpty(keyFile))
         {
-            AssemblyName srcName = new AssemblyName(assembly.FullName);
+            return ResignAssembly(assembly, "-q -Ra \"" + assembly + "\" \"" + keyFile + "\"");
+        }
 
-            if (srcName == null || string.IsNullOrEmpty(srcName.Name))
-                return null;
+        return string.IsNullOrEmpty(keyContainer);
+    }
 
-            try
+#pragma warning disable S1172 // Unused method parameters should be removed
+#pragma warning disable IDE0060 // Remove unused parameter
+    bool ResignAssembly(string assembly, string arguments)
+#pragma warning restore IDE0060 // Remove unused parameter
+#pragma warning restore S1172 // Unused method parameters should be removed
+    {
+        string snExe = FindStrongNameTool();
+        if (string.IsNullOrEmpty(snExe))
+        {
+            throw new FileNotFoundException("sn.exe was not found. Set StrongNameToolPath or put sn.exe on PATH.", "sn.exe");
+        }
+
+        ProcessStartInfo psi = new ProcessStartInfo(snExe, arguments)
+        {
+            UseShellExecute = false,
+            WindowStyle = ProcessWindowStyle.Hidden,
+            CreateNoWindow = true
+        };
+
+        using Process p = Process.Start(psi);
+        p.WaitForExit();
+        return p.ExitCode == 0;
+    }
+
+    string FindStrongNameTool()
+    {
+        if (!string.IsNullOrWhiteSpace(StrongNameToolPath) && File.Exists(StrongNameToolPath))
+        {
+            return StrongNameToolPath;
+        }
+
+        return FindFileInPath("sn.exe");
+    }
+
+    static string FindFileInPath(string file)
+    {
+        string path = Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(path))
+        {
+            return null;
+        }
+
+        foreach (string entry in path.Split(Path.PathSeparator))
+        {
+            if (string.IsNullOrWhiteSpace(entry))
             {
-                // Prepare dynamic assembly for resources
-                AssemblyName asmName = new AssemblyName(srcName.FullName);
+                continue;
+            }
 
-                // Only create an on-disk assembly. We never have to execute anything
-                AssemblyBuilder newAssembly = AppDomain.CurrentDomain.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.ReflectionOnly, outputDirectory);
+            string fullPath = Path.GetFullPath(Path.Combine(entry, file));
+            if (File.Exists(fullPath))
+            {
+                return fullPath;
+            }
+        }
 
-                string tmpFile = srcName.Name + ".dll";
-                newAssembly.DefineDynamicModule(asmName.Name, tmpFile);
+        return null;
+    }
 
-                AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve += new ResolveEventHandler(OnReflectionOnlyAssemblyResolve);
+    sealed class VersionInfo
+    {
+        public ushort Language { get; } = 0x0409;
+        public ushort CodePage { get; } = 1200;
+        public string AssemblyName { get; private set; }
+        public Version AssemblyVersion { get; private set; }
+        public string FileName { get; private set; }
+        public string CompanyName { get; private set; }
+        public string FileDescription { get; private set; }
+        public string FileVersion { get; private set; }
+        public string InternalName { get; private set; }
+        public string LegalCopyright { get; private set; }
+        public string OriginalFilename { get; private set; }
+        public string ProductName { get; private set; }
+        public string ProductVersion { get; private set; }
 
-                try
-                {
-                    Assembly mscorlib = Assembly.ReflectionOnlyLoad(typeof(int).Assembly.FullName);
-                    Assembly system = Assembly.ReflectionOnlyLoad(typeof(Uri).Assembly.FullName);
-                    bool hasInformationalVersion = false;
-                    bool hasVersion = false;
+        public static VersionInfo FromAssembly(
+            string sourcePath,
+            string companyName,
+            string fileDescription,
+            string productName,
+            string legalCopyright,
+            string fileVersion,
+            string productVersion)
+        {
+            System.Reflection.AssemblyName assemblyName = System.Reflection.AssemblyName.GetAssemblyName(sourcePath);
+            Version version = assemblyName.Version ?? new Version(0, 0, 0, 0);
+            string versionText = NormalizeVersionText(version);
+            string name = assemblyName.Name ?? Path.GetFileNameWithoutExtension(sourcePath);
 
-                    foreach (CustomAttributeData attr in CustomAttributeData.GetCustomAttributes(assembly))
+            return new VersionInfo
+            {
+                AssemblyName = name,
+                AssemblyVersion = NormalizeVersion(version),
+                FileName = Path.GetFileName(sourcePath),
+                CompanyName = ValueOrDefault(companyName, string.Empty),
+                FileDescription = ValueOrDefault(fileDescription, name),
+                FileVersion = ValueOrDefault(fileVersion, versionText),
+                InternalName = name,
+                LegalCopyright = ValueOrDefault(legalCopyright, string.Empty),
+                OriginalFilename = Path.GetFileName(sourcePath),
+                ProductName = ValueOrDefault(productName, name),
+                ProductVersion = ValueOrDefault(productVersion, versionText)
+            };
+        }
+
+        static string ValueOrDefault(string value, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        }
+
+        static Version NormalizeVersion(Version version)
+        {
+            return new Version(
+                Math.Max(version.Major, 0),
+                Math.Max(version.Minor, 0),
+                Math.Max(version.Build, 0),
+                Math.Max(version.Revision, 0));
+        }
+
+        static string NormalizeVersionText(Version version)
+        {
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}.{1}.{2}.{3}",
+                Math.Max(version.Major, 0),
+                Math.Max(version.Minor, 0),
+                Math.Max(version.Build, 0),
+                Math.Max(version.Revision, 0));
+        }
+    }
+
+    sealed class VersionResourceBuilder
+    {
+        readonly List<byte> _bytes = new List<byte>();
+
+        public static byte[] Build(VersionInfo info)
+        {
+            VersionResourceBuilder builder = new VersionResourceBuilder();
+            builder.WriteRoot(info);
+            return builder._bytes.ToArray();
+        }
+
+        void WriteRoot(VersionInfo info)
+        {
+            WriteBlock("VS_VERSION_INFO", 52, 0, () =>
+            {
+                WriteFixedFileInfo(info.AssemblyVersion);
+                AlignToDword();
+                WriteStringFileInfo(info);
+                WriteVarFileInfo(info);
+            });
+        }
+
+        void WriteFixedFileInfo(Version version)
+        {
+            WriteInt32(VsFfiSignature);
+            WriteInt32(VsFfiStrucVersion);
+            WriteInt32(MakeVersionPart(version.Major, version.Minor));
+            WriteInt32(MakeVersionPart(version.Build, version.Revision));
+            WriteInt32(MakeVersionPart(version.Major, version.Minor));
+            WriteInt32(MakeVersionPart(version.Build, version.Revision));
+            WriteInt32(VsFfiFileFlagsMask);
+            WriteInt32(0);
+            WriteInt32(VosNtWindows32);
+            WriteInt32(VftDll);
+            WriteInt32(0);
+            WriteInt32(0);
+            WriteInt32(0);
+        }
+
+        static int MakeVersionPart(int high, int low)
+        {
+            return ((high & 0xFFFF) << 16) | (low & 0xFFFF);
+        }
+
+        void WriteStringFileInfo(VersionInfo info)
+        {
+            WriteBlock("StringFileInfo", 0, 1, () =>
+            {
+                WriteBlock(
+                    string.Format(CultureInfo.InvariantCulture, "{0:X4}{1:X4}", info.Language, info.CodePage),
+                    0,
+                    1,
+                    () =>
                     {
-                        if ((attr.NamedArguments.Count > 0) || (attr.Constructor == null))
-                        {
-                            // We don't use named arguments at this time; not needed for the version resources
-                            continue;
-                        }
+                        WriteString("CompanyName", info.CompanyName);
+                        WriteString("FileDescription", info.FileDescription);
+                        WriteString("FileVersion", info.FileVersion);
+                        WriteString("InternalName", info.InternalName);
+                        WriteString("LegalCopyright", info.LegalCopyright);
+                        WriteString("OriginalFilename", info.OriginalFilename);
+                        WriteString("ProductName", info.ProductName);
+                        WriteString("ProductVersion", info.ProductVersion);
+                        WriteString("Assembly Version", info.AssemblyVersion.ToString());
+                    });
+            });
+        }
 
-                        Type type = attr.Constructor.ReflectedType;
-
-                        if (type.Assembly != mscorlib && type.Assembly != system)
-                        {
-                            continue;
-                        }
-
-                        if (type.Assembly == mscorlib)
-                            switch (type.Name)
-                            {
-                                case "System.Reflection.AssemblyInformationalVersionAttribute":
-                                    hasInformationalVersion = true;
-                                    break;
-                                case "System.Reflection.AssemblyVersionAttribute":
-                                    hasVersion = true;
-                                    break;
-                            }
-
-                        List<object> values = new List<object>();
-                        foreach (CustomAttributeTypedArgument arg in attr.ConstructorArguments)
-                        {
-                            values.Add(arg.Value);
-                        }
-
-                        CustomAttributeBuilder cb = new CustomAttributeBuilder(attr.Constructor, values.ToArray());
-
-                        newAssembly.SetCustomAttribute(cb);
-                    }
-
-                    if (!hasVersion)
-                        newAssembly.SetCustomAttribute(
-                                        new CustomAttributeBuilder(typeof(AssemblyVersionAttribute).GetConstructor(new Type[] { typeof(String) }),
-                                                                                           new object[] { srcName.Version.ToString() }));
-                    if (!hasInformationalVersion)
-                        newAssembly.SetCustomAttribute(
-                                        new CustomAttributeBuilder(typeof(AssemblyInformationalVersionAttribute).GetConstructor(new Type[] { typeof(String) }),
-                                                                                           new object[] { srcName.Version.ToString() }));
-
-                    newAssembly.SetCustomAttribute(
-                                            new CustomAttributeBuilder(typeof(AssemblyCultureAttribute).GetConstructor(new Type[] { typeof(String) }),
-                                                                                                    new object[] { "" }));
-                }
-                finally
+        void WriteVarFileInfo(VersionInfo info)
+        {
+            WriteBlock("VarFileInfo", 0, 1, () =>
+            {
+                WriteBlock("Translation", 4, 0, () =>
                 {
-                    AppDomain.CurrentDomain.ReflectionOnlyAssemblyResolve -= new ResolveEventHandler(OnReflectionOnlyAssemblyResolve);
-                }
+                    WriteUInt16(info.Language);
+                    WriteUInt16(info.CodePage);
+                });
+            });
+        }
 
-                newAssembly.DefineVersionInfoResource();
-                newAssembly.Save(tmpFile);
+        void WriteString(string key, string value)
+        {
+            string text = value ?? string.Empty;
+            WriteBlock(key, (ushort)(text.Length + 1), 1, () => WriteUnicodeString(text));
+        }
 
-                return Path.Combine(outputDirectory, tmpFile);
-            }
-            catch (FileLoadException e)
+        void WriteBlock(string key, ushort valueLength, ushort type, Action writeValueAndChildren)
+        {
+            int start = _bytes.Count;
+            WriteUInt16(0);
+            WriteUInt16(valueLength);
+            WriteUInt16(type);
+            WriteUnicodeString(key);
+            AlignToDword();
+
+            writeValueAndChildren();
+            AlignToDword();
+
+            int length = _bytes.Count - start;
+            _bytes[start] = (byte)(length & 0xFF);
+            _bytes[start + 1] = (byte)((length >> 8) & 0xFF);
+        }
+
+        void AlignToDword()
+        {
+            while ((_bytes.Count % 4) != 0)
             {
-                Console.WriteLine(e.ToString());
-                return null;
-            }
-            catch (IOException e)
-            {
-                Console.WriteLine(e.ToString());
-                return null;
+                _bytes.Add(0);
             }
         }
 
-        /// <summary>
-        /// Called when [reflection only assembly resolve].
-        /// </summary>
-        /// <param name="sender">The sender.</param>
-        /// <param name="args">The <see cref="System.ResolveEventArgs"/> instance containing the event data.</param>
-        /// <returns></returns>
-        static Assembly OnReflectionOnlyAssemblyResolve(object sender, ResolveEventArgs args)
+        void WriteUnicodeString(string value)
         {
-            return Assembly.ReflectionOnlyLoad(args.Name);
+            byte[] encoded = Encoding.Unicode.GetBytes((value ?? string.Empty) + "\0");
+            _bytes.AddRange(encoded);
+        }
+
+        void WriteUInt16(int value)
+        {
+            _bytes.Add((byte)(value & 0xFF));
+            _bytes.Add((byte)((value >> 8) & 0xFF));
+        }
+
+        void WriteInt32(int value)
+        {
+            _bytes.Add((byte)(value & 0xFF));
+            _bytes.Add((byte)((value >> 8) & 0xFF));
+            _bytes.Add((byte)((value >> 16) & 0xFF));
+            _bytes.Add((byte)((value >> 24) & 0xFF));
         }
     }
 }

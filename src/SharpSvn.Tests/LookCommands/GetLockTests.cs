@@ -22,93 +22,84 @@ using System.Collections.ObjectModel;
 using System.IO;
 using SharpSvn.TestBuilder;
 
-namespace SharpSvn.Tests.LookCommands
+namespace SharpSvn.Tests.LookCommands;
+
+[TestClass]
+public class GetLockTests : HookTestBase
 {
-    [TestClass]
-    public class GetLockTests : HookTestBase
+    [TestMethod]
+    public void LookGetLock_Test()
     {
-        [TestMethod]
-        public void LookGetLock_Test()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.DefaultBranched);
-            int n = 0;
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.DefaultBranched);
+        int n = 0;
 
-            Client.RemoteLock(new Uri(sbox.Uri, "src/file3.cpp"), "LOCKED!");
+        Client.RemoteLock(new Uri(sbox.Uri, "src/file3.cpp"), "LOCKED!");
 
-            using (InstallHook(sbox.RepositoryUri, SvnHookType.PreLock,
-                delegate (object sender, ReposHookEventArgs e)
-                {
-                    using (SvnLookClient look = new SvnLookClient())
-                    {
-                        SvnLockInfo info;
-                        look.GetLock(e.HookArgs.LookOrigin, e.HookArgs.Path, out info);
-                        n++;
-                    }
-                }))
-            using (InstallHook(sbox.RepositoryUri, SvnHookType.PostLock,
-                delegate (object sender, ReposHookEventArgs e)
-                {
-                    using (SvnLookClient look = new SvnLookClient())
-                    {
-                        SvnLockInfo info;
-                        foreach (string path in e.HookArgs.Paths)
-                        {
-                            look.GetLock(e.HookArgs.LookOrigin, path, out info);
-                            Assert.That(info, Is.Not.Null);
-                            n++;
-                        }
-                        n++; // 1 more
-                    }
-                }))
-            using (InstallHook(sbox.RepositoryUri, SvnHookType.PreUnlock,
-                delegate (object sender, ReposHookEventArgs e)
-                {
-                    using (SvnLookClient look = new SvnLookClient())
-                    {
-                        SvnLockInfo info;
-                        look.GetLock(e.HookArgs.LookOrigin, e.HookArgs.Path, out info);
-                        n++;
-                    }
-                }))
-            using (InstallHook(sbox.RepositoryUri, SvnHookType.PostUnlock,
-                delegate (object sender, ReposHookEventArgs e)
-                {
-                    using (SvnLookClient look = new SvnLookClient())
-                    {
-                        SvnLockInfo info;
-                        foreach (string path in e.HookArgs.Paths)
-                        {
-                            look.GetLock(e.HookArgs.LookOrigin, path, out info);
-                            Assert.That(info, Is.Null);
-                            n++;
-                        }
-                        n++; // 1 more
-                    }
-                }))
+        using (InstallHook(sbox.RepositoryUri, SvnHookType.PreLock,
+            delegate (object sender, ReposHookEventArgs e)
             {
-
-                using (SvnLookClient look = new SvnLookClient())
+                using SvnLookClient look = new SvnLookClient();
+                SvnLockInfo info;
+                look.GetLock(e.HookArgs.LookOrigin, e.HookArgs.Path, out info);
+                n++;
+            }))
+        using (InstallHook(sbox.RepositoryUri, SvnHookType.PostLock,
+            delegate (object sender, ReposHookEventArgs e)
+            {
+                using SvnLookClient look = new SvnLookClient();
+                SvnLockInfo info;
+                foreach (string path in e.HookArgs.Paths)
                 {
-                    SvnLockInfo info;
-                    look.GetLock(new SvnLookOrigin(sbox.RepositoryUri.LocalPath), "trunk/src/file3.cpp", out info);
+                    look.GetLock(e.HookArgs.LookOrigin, path, out info);
                     Assert.That(info, Is.Not.Null);
-                    Assert.That(info.Comment, Is.EqualTo("LOCKED!"));
+                    n++;
                 }
-                Client.Lock(Path.Combine(sbox.Wc, "src", "file1.cs"), "Can I?");
-
-                Client.Unlock(Path.Combine(sbox.Wc, "src", "file1.cs"));
-
-                string[] twopaths = new string[]
+                n++; // 1 more
+            }))
+        using (InstallHook(sbox.RepositoryUri, SvnHookType.PreUnlock,
+            delegate (object sender, ReposHookEventArgs e)
+            {
+                using SvnLookClient look = new SvnLookClient();
+                SvnLockInfo info;
+                look.GetLock(e.HookArgs.LookOrigin, e.HookArgs.Path, out info);
+                n++;
+            }))
+        using (InstallHook(sbox.RepositoryUri, SvnHookType.PostUnlock,
+            delegate (object sender, ReposHookEventArgs e)
+            {
+                using SvnLookClient look = new SvnLookClient();
+                SvnLockInfo info;
+                foreach (string path in e.HookArgs.Paths)
                 {
-                     Path.Combine(sbox.Wc, "src", "file1.cs"),
-                     Path.Combine(sbox.Wc, "src", "file2.vb")
-                };
-                Client.Lock(twopaths, "Can I?");
-                Client.Unlock(twopaths);
-            }
+                    look.GetLock(e.HookArgs.LookOrigin, path, out info);
+                    Assert.That(info, Is.Null);
+                    n++;
+                }
+                n++; // 1 more
+            }))
+        {
 
-            Assert.That(n, Is.EqualTo(16));
+            using (SvnLookClient look = new SvnLookClient())
+            {
+                SvnLockInfo info;
+                look.GetLock(new SvnLookOrigin(sbox.RepositoryUri.LocalPath), "trunk/src/file3.cpp", out info);
+                Assert.That(info, Is.Not.Null);
+                Assert.That(info.Comment, Is.EqualTo("LOCKED!"));
+            }
+            Client.Lock(Path.Combine(sbox.Wc, "src", "file1.cs"), "Can I?");
+
+            Client.Unlock(Path.Combine(sbox.Wc, "src", "file1.cs"));
+
+            string[] twopaths = new string[]
+            {
+                 Path.Combine(sbox.Wc, "src", "file1.cs"),
+                 Path.Combine(sbox.Wc, "src", "file2.vb")
+            };
+            Client.Lock(twopaths, "Can I?");
+            Client.Unlock(twopaths);
         }
+
+        Assert.That(n, Is.EqualTo(16));
     }
 }

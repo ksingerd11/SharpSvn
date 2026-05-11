@@ -11,8 +11,10 @@
   <property name="cmakeGenerator" value="Visual Studio 15 2017" overwrite="false" if="${VSversion == '2017'}" />
   <property name="cmakeGenerator" value="Visual Studio 16 2019" overwrite="false" if="${VSversion == '2019'}" />
   <property name="cmakeGenerator" value="Visual Studio 17 2022" overwrite="false" if="${VSversion == '2022'}" />
+  <property name="cmakeGenerator" value="Visual Studio 18 2026" overwrite="false" if="${VSversion == '2026'}" />
 
   <property name="cmakePlatform" value="${platform}" />
+  <property name="cmakePolicyVersionMinimum" value="3.5" overwrite="false" />
 
   <filterchain id="cmake-lib">
     <!-- DebugInformationFormat is only empty for release mode -->

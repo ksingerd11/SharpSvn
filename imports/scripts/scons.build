@@ -12,6 +12,7 @@
   <property name="sconsVSVersion" value="14.1" if="${VSversion == '2017'}" />
   <property name="sconsVSVersion" value="14.2" if="${VSversion == '2019'}" />
   <property name="sconsVSVersion" value="14.3" if="${VSversion == '2022'}" />
+  <property name="sconsVSVersion" value="14.5" if="${VSversion == '2026'}" />
   <property name="sconsPlatform" value="${platform}" />
   <property name="sconsPlatform" value="x86" if="${platform == 'win32'}" />
   <property name="sconsPlatform" value="x86_64" if="${platform == 'x64'}" />
@@ -19,9 +20,46 @@
   <property name="sconsPlatform" value="arm" if="${platform == 'ARM'}" />
 
   <target name="scons-install" depends="checkout">
-    <property name="VCINSTALLDIR" value="${environment::get-variable('VCINSTALLDIR')}" />
+    <property name="VCINSTALLDIR" value="" />
+    <property name="VCINSTALLDIR" value="${environment::get-variable('VCINSTALLDIR')}" if="${environment::variable-exists('VCINSTALLDIR')}" />
+    <FilterFile file="${sconsDir}\scons-local-${sconsVersion}\SCons\Tool\MSCommon\vc.py" if="${VSversion == '2026'}">
+      <filterchain>
+        <replacestring from='    "14.3",' to='    "14.5",
+    "14.3",' />
+        <replacestring from="    ('17', '14.3', None)," to="    ('18', '14.5', None),
+    ('17', '14.3', None)," />
+        <replacestring from="    '14.3':    _DETECT(root='..', path=r'Common7\IDE', programs=VS2022_VS2002_DEV),  # 2022" to="    '14.5':    _DETECT(root='..', path=r'Common7\IDE', programs=VS2022_VS2002_DEV),  # 2026
+    '14.3':    _DETECT(root='..', path=r'Common7\IDE', programs=VS2022_VS2002_DEV),  # 2022" />
+      </filterchain>
+    </FilterFile>
+    <FilterFile file="${sconsDir}\scons-local-${sconsVersion}\SCons\Tool\MSCommon\vs.py" if="${VSversion == '2026'}">
+      <filterchain>
+        <replacestring from="    # Visual Studio 2022" to="    # Visual Studio 2026
+    VisualStudio('14.5',
+                 vc_version='14.5',
+                 sdk_version='10.0A',
+                 hkeys=[],
+                 common_tools_var='VS180COMNTOOLS',
+                 executable_path=r'Common7\IDE\devenv.com',
+                 batch_file_path=r'Common7\Tools\VsDevCmd.bat',
+                 supported_arch=['x86', 'amd64', &quot;arm&quot;, 'arm64'],
+                 ),
+
+    # Visual Studio 2022" />
+      </filterchain>
+    </FilterFile>
+    <FilterFile file="${sconsDir}\scons-local-${sconsVersion}\SCons\Tool\MSCommon\MSVC\Config.py" if="${VSversion == '2026'}">
+      <filterchain>
+        <replacestring from="    ('144', '14.4', '19.4')," to="    ('145', '14.5', '19.5'),
+    ('144', '14.4', '19.4')," />
+        <replacestring from="    ('v143', ['144', '143'], '140', True)," to="    ('v145', ['145'], '140', True),
+    ('v143', ['144', '143'], '140', True)," />
+        <replacestring from="    ('2022', '17.0', True,  False, 'vswhere' , ['10.0', '8.1'], ['10'],   'uwp', ['v143', 'v142', 'v141', 'v140'])," to="    ('2026', '18.0', True,  False, 'vswhere' , ['10.0', '8.1'], ['10'],   'uwp', ['v145', 'v143', 'v142', 'v141', 'v140']),
+    ('2022', '17.0', True,  False, 'vswhere' , ['10.0', '8.1'], ['10'],   'uwp', ['v143', 'v142', 'v141', 'v140'])," />
+      </filterchain>
+    </FilterFile>
     <if test="${string::contains(VCINSTALLDIR, '\Preview\')}">
-      <FilterFile file="${sconsDir}\scons-local-${sconsVersion}\SCons\Tool\MSCommon\vc.py">
+      <FilterFile file="${sconsDir}\scons-local-${sconsVersion}\SCons\Tool\MSCommon\vc.py" generated="true">
         <filterchain>
           <replacestring from='_cmd = [vswhere_path] ' to='_cmd = [vswhere_path, "-prerelease"] ' />
         </filterchain>

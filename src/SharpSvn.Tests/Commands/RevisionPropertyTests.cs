@@ -29,51 +29,50 @@ using SharpSvn;
 /// <summary>
 /// Tests the Client::RevPropSet
 /// </summary>
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+[TestClass]
+public class RevisionPropertyTests : TestBase
 {
-    [TestClass]
-    public class RevisionPropertyTests : TestBase
+    /// <summary>
+    ///Attempts to Set Properties on a file in the repository represented by url.
+    /// </summary>
+    [TestMethod]
+    public void RevisionProperty_RevSetPropDir()
     {
-        /// <summary>
-        ///Attempts to Set Properties on a file in the repository represented by url.
-        /// </summary>
-        [TestMethod]
-        public void RevisionProperty_RevSetPropDir()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
-            sbox.InstallRevpropHook(ReposUrl);
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
+        sbox.InstallRevpropHook(ReposUrl);
 
-            byte[] propval = Encoding.UTF8.GetBytes("moo");
+        byte[] propval = Encoding.UTF8.GetBytes("moo");
 
-            this.Client.SetRevisionProperty(ReposUrl, SvnRevision.Head, "cow", propval);
+        this.Client.SetRevisionProperty(ReposUrl, SvnRevision.Head, "cow", propval);
 
-            Assert.That(this.RunCommand("svn", "propget cow --revprop -r head " + ReposUrl).Trim(), Is.EqualTo("moo"),
-                "Couldn't set prop on selected Repos!");
-        }
+        Assert.That(this.RunCommand("svn", "propget cow --revprop -r head " + ReposUrl).Trim(), Is.EqualTo("moo"),
+            "Couldn't set prop on selected Repos!");
+    }
 
-        [TestMethod]
-        public void RevisionProperty_SetLog()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri reposUri = sbox.CreateRepository(SandBoxRepository.DefaultBranched);
-            string reposPath = reposUri.AbsolutePath;
+    [TestMethod]
+    public void RevisionProperty_SetLog()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri reposUri = sbox.CreateRepository(SandBoxRepository.DefaultBranched);
+        string reposPath = reposUri.AbsolutePath;
 
-            InstallRevpropHook(reposPath);
+        InstallRevpropHook(reposPath);
 
-            SvnRevision rev = 2;
+        SvnRevision rev = 2;
 
-            Client.SetRevisionProperty(reposUri, rev, SvnPropertyNames.SvnDate, DateTime.UtcNow.ToString("o"));
+        Client.SetRevisionProperty(reposUri, rev, SvnPropertyNames.SvnDate, DateTime.UtcNow.ToString("o"));
 
-            Client.SetRevisionProperty(new Uri(reposUri, "trunk"), rev, SvnPropertyNames.SvnDate, SvnPropertyNames.FormatDate(DateTime.UtcNow));
-        }
+        Client.SetRevisionProperty(new Uri(reposUri, "trunk"), rev, SvnPropertyNames.SvnDate, SvnPropertyNames.FormatDate(DateTime.UtcNow));
+    }
 
 
-        protected void InstallRevpropHook(string reposPath)
-        {
-            string bat = Path.ChangeExtension(SvnHookArguments.GetHookFileName(reposPath, SvnHookType.PreRevPropChange), ".bat");
+    protected void InstallRevpropHook(string reposPath)
+    {
+        string bat = Path.ChangeExtension(SvnHookArguments.GetHookFileName(reposPath, SvnHookType.PreRevPropChange), ".bat");
 
-            File.WriteAllText(bat, "exit 0");
-        }
+        File.WriteAllText(bat, "exit 0");
     }
 }

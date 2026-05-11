@@ -23,81 +23,78 @@ using SharpSvn.TestBuilder;
 
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+/// <summary>
+/// Tests the NSvn.Client.MakeDir method
+/// </summary>
+[TestClass]
+public class CreateDirectoryTests : TestBase
 {
     /// <summary>
-    /// Tests the NSvn.Client.MakeDir method
+    /// Tests creating a directory in the working copy
     /// </summary>
-    [TestClass]
-    public class CreateDirectoryTests : TestBase
+    [TestMethod]
+    public void CreateDirectory_MakeLocalDir()
     {
-        /// <summary>
-        /// Tests creating a directory in the working copy
-        /// </summary>
-        [TestMethod]
-        public void CreateDirectory_MakeLocalDir()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri emptyUri = sbox.CreateRepository(SandBoxRepository.Empty);
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri emptyUri = sbox.CreateRepository(SandBoxRepository.Empty);
 
-            Client.CheckOut(emptyUri, sbox.Wc);
+        Client.CheckOut(emptyUri, sbox.Wc);
 
-            string path = Path.Combine(sbox.Wc, "foo");
-            Assert.That(Client.CreateDirectory(path));
+        string path = Path.Combine(sbox.Wc, "foo");
+        Assert.That(Client.CreateDirectory(path));
 
-            Assert.That(this.GetSvnStatus(path), Is.EqualTo(SvnStatus.Added), "Wrong status code");
-        }
+        Assert.That(this.GetSvnStatus(path), Is.EqualTo(SvnStatus.Added), "Wrong status code");
+    }
 
-        /// <summary>
-        /// Tests creating a directory in the repository
-        /// </summary>
-        [TestMethod]
-        public void CreateDirectory_MakeRepositoryDir()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
-            Uri url = new Uri(ReposUrl, "mooNewDirectory/");
+    /// <summary>
+    /// Tests creating a directory in the repository
+    /// </summary>
+    [TestMethod]
+    public void CreateDirectory_MakeRepositoryDir()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
+        Uri url = new Uri(ReposUrl, "mooNewDirectory/");
 
-            Assert.That(Client.RemoteCreateDirectory(url));
-            bool gotOne = false;
-            Client.List(url, delegate(object sender, SvnListEventArgs e) { gotOne = true; });
+        Assert.That(Client.RemoteCreateDirectory(url));
+        bool gotOne = false;
+        Client.List(url, delegate(object sender, SvnListEventArgs e) { gotOne = true; });
 
-            Assert.That(gotOne);
-        }
+        Assert.That(gotOne);
+    }
 
-        [TestMethod]
-        public void CreateDirectory_CreateTrunk()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
-            using (SvnClient client = NewSvnClient(true, false))
-            {
-                Uri trunkUri = new Uri(ReposUrl, "trunk/");
-                client.RemoteCreateDirectory(trunkUri);
+    [TestMethod]
+    public void CreateDirectory_CreateTrunk()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri ReposUrl = sbox.CreateRepository(SandBoxRepository.Empty);
+        using SvnClient client = NewSvnClient(true, false);
+        Uri trunkUri = new Uri(ReposUrl, "trunk/");
+        client.RemoteCreateDirectory(trunkUri);
 
-                string trunkPath = sbox.Wc;
+        string trunkPath = sbox.Wc;
 
-                client.CheckOut(trunkUri, trunkPath);
+        client.CheckOut(trunkUri, trunkPath);
 
-                TouchFile(Path.Combine(trunkPath, "test.txt"));
+        TouchFile(Path.Combine(trunkPath, "test.txt"));
 
-                Assert.That(SvnTools.IsManagedPath(trunkPath));
-                Assert.That(SvnTools.IsBelowManagedPath(trunkPath));
-                Assert.That(SvnTools.IsBelowManagedPath(Path.Combine(trunkPath, "q/r/s/t/u/v/test.txt")));
+        Assert.That(SvnTools.IsManagedPath(trunkPath));
+        Assert.That(SvnTools.IsBelowManagedPath(trunkPath));
+        Assert.That(SvnTools.IsBelowManagedPath(Path.Combine(trunkPath, "q/r/s/t/u/v/test.txt")));
 
-                client.Add(Path.Combine(trunkPath, "test.txt"));
+        client.Add(Path.Combine(trunkPath, "test.txt"));
 
-                Directory.CreateDirectory(Path.Combine(trunkPath, "dir"));
-                TouchFile(Path.Combine(trunkPath, "dir/test.txt"));
+        Directory.CreateDirectory(Path.Combine(trunkPath, "dir"));
+        TouchFile(Path.Combine(trunkPath, "dir/test.txt"));
 
-                SvnAddArgs aa = new SvnAddArgs();
-                aa.AddParents = true;
-                client.Add(Path.Combine(trunkPath, "dir/test.txt"), aa);
+        SvnAddArgs aa = new SvnAddArgs();
+        aa.AddParents = true;
+        client.Add(Path.Combine(trunkPath, "dir/test.txt"), aa);
 
-                client.Commit(trunkPath);
+        client.Commit(trunkPath);
 
-                client.RemoteDelete(trunkUri, new SvnDeleteArgs());
-            }
-        }
+        client.RemoteDelete(trunkUri, new SvnDeleteArgs());
     }
 }

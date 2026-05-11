@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using Microsoft.VisualStudio.TestTools.UnitTesting;
 
-namespace SharpSvn.TestBuilder
+namespace SharpSvn.TestBuilder;
+
+public interface IHasTestContext
 {
-    public interface IHasTestContext
-    {
-        TestContext TestContext { get; }
-    }
+    TestContext TestContext { get; }
 }

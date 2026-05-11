@@ -128,3 +128,37 @@ bool SvnClient::Merge(String^ targetPath, SvnTarget^ source, ICollection<TRevisi
 
     return args->HandleResult(this, r, targetPath);
 }
+
+bool SvnClient::SyncMerge(String^ targetPath, SvnTarget^ source, SvnMergeArgs^ args)
+{
+    if (String::IsNullOrEmpty(targetPath))
+        throw gcnew ArgumentNullException("targetPath");
+    else if (!IsNotUri(targetPath))
+        throw gcnew ArgumentException(SharpSvnStrings::ArgumentMustBeAPathNotAUri, "targetPath");
+    else if (!source)
+        throw gcnew ArgumentNullException("source");
+    else if (!args)
+        throw gcnew ArgumentNullException("args");
+
+    EnsureState(SvnContextState::AuthorizationInitialized);
+    AprPool pool(%_pool);
+    ArgsStore store(this, args, %pool);
+
+    svn_error_t *r = svn_client_merge_peg5(
+        source->AllocAsString(%pool),
+        nullptr,
+        source->GetSvnRevision(SvnRevision::Working, SvnRevision::Head)->AllocSvnRevision(%pool),
+        pool.AllocDirent(targetPath),
+        (svn_depth_t)args->Depth,
+        args->IgnoreMergeInfo.HasValue ? args->IgnoreMergeInfo.Value : args->IgnoreAncestry,
+        args->IgnoreAncestry,
+        args->Force,
+        args->RecordOnly,
+        args->DryRun,
+        !args->CheckForMixedRevisions,
+        args->MergeArguments ? AllocArray(args->MergeArguments, %pool) : nullptr,
+        CtxHandle,
+        pool.Handle);
+
+    return args->HandleResult(this, r, targetPath);
+}

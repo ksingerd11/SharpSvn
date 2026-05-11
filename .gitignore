@@ -7,6 +7,7 @@
 /imports/svn-dist/dist-*/
 /imports/NAnt.*/
 /imports/release/
+/imports/scripts/x64/Debug/
 .vs/
 *.user
 [Uu]pgrade[Ll]og.htm
@@ -20,3 +21,6 @@ packages/
 # Buildbot Scripting
 scripts/*.cache.bat
 scripts/msbuild-version.rsp
+
+/imports/SharpSvn-SvnI18n/bin_2008/x64/Debug/
+/imports/SharpSvn-SvnI18n/obj_2008/x64/Debug/

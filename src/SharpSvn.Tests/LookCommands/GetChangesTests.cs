@@ -20,128 +20,117 @@ using SharpSvn.TestBuilder;
 using Assert = NUnit.Framework.Assert;
 using Is = NUnit.Framework.Is;
 
-namespace SharpSvn.Tests.LookCommands
+namespace SharpSvn.Tests.LookCommands;
+
+[TestClass]
+public class GetChangesTests : HookTestBase
 {
-    [TestClass]
-    public class GetChangesTests : HookTestBase
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void ChangedDirs()
     {
-
-        [TestMethod]
-        [DoNotParallelize]
-        public void ChangedDirs()
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri uri = sbox.CreateRepository(SandBoxRepository.Empty);
+        using (InstallHook(uri, SvnHookType.PreCommit, OnChangedDirs))
         {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri uri = sbox.CreateRepository(SandBoxRepository.Empty);
-            using (InstallHook(uri, SvnHookType.PreCommit, OnChangedDirs))
-            {
-                using (SvnClient cl = new SvnClient())
+            using SvnClient cl = new SvnClient();
+            SvnCreateDirectoryArgs da = new SvnCreateDirectoryArgs();
+            da.CreateParents = true;
+            da.LogMessage = "Created!";
+            cl.RemoteCreateDirectories(
+            new Uri[]
                 {
-                    SvnCreateDirectoryArgs da = new SvnCreateDirectoryArgs();
-                    da.CreateParents = true;
-                    da.LogMessage = "Created!";
-                    cl.RemoteCreateDirectories(
-                    new Uri[]
-                        {
-                        new Uri(uri, "a/b/c/d/e/f"),
-                        new Uri(uri, "a/b/c/d/g/h"),
-                        new Uri(uri, "i/j/k"),
-                        new Uri(uri, "l/m/n"),
-                        new Uri(uri, "l/m/n/o/p")
-                        }, da);
-                }
-            }
+                    new Uri(uri, "a/b/c/d/e/f"),
+                    new Uri(uri, "a/b/c/d/g/h"),
+                    new Uri(uri, "i/j/k"),
+                    new Uri(uri, "l/m/n"),
+                    new Uri(uri, "l/m/n/o/p")
+                }, da);
+        }
 
-            using (InstallHook(uri, SvnHookType.PreCommit, OnCopyDir))
-            {
-                using (SvnClient cl = new SvnClient())
+        using (InstallHook(uri, SvnHookType.PreCommit, OnCopyDir))
+        {
+            using SvnClient cl = new SvnClient();
+            SvnCopyArgs ca = new SvnCopyArgs();
+            ca.CreateParents = true;
+            ca.LogMessage = "Created!";
+            cl.RemoteCopy(
+            new SvnUriTarget[]
                 {
-                    SvnCopyArgs ca = new SvnCopyArgs();
-                    ca.CreateParents = true;
-                    ca.LogMessage = "Created!";
-                    cl.RemoteCopy(
-                    new SvnUriTarget[]
-                        {
-                        new Uri(uri, "a/b/c/d"),
-                        new Uri(uri, "i/j")
-                        }, uri, ca);
-                }
-            }
+                    new Uri(uri, "a/b/c/d"),
+                    new Uri(uri, "i/j")
+                }, uri, ca);
         }
+    }
 
-        private void OnChangedDirs(object sender, ReposHookEventArgs e)
+    private void OnChangedDirs(object sender, ReposHookEventArgs e)
+    {
+        using SvnLookClient lc = new SvnLookClient();
+        SvnChangedArgs ca = new SvnChangedArgs();
+        ca.Transaction = e.HookArgs.TransactionName;
+
+        Collection<SvnChangedEventArgs> list;
+        Assert.That(lc.GetChanged(e.HookArgs.LookOrigin, ca, out list));
+
+        Assert.That(list.Count, Is.EqualTo(16));
+        Assert.That(list[0].Name, Is.EqualTo("a"));
+        Assert.That(list[0].Path, Is.EqualTo("/a/"));
+        Assert.That(list[1].Name, Is.EqualTo("b"));
+        Assert.That(list[1].Path, Is.EqualTo("/a/b/"));
+        Assert.That(list[2].Name, Is.EqualTo("c"));
+        Assert.That(list[2].Path, Is.EqualTo("/a/b/c/"));
+    }
+
+    private void OnCopyDir(object sender, ReposHookEventArgs e)
+    {
+        using SvnLookClient lc = new SvnLookClient();
+        SvnChangedArgs ca = new SvnChangedArgs();
+        ca.Transaction = e.HookArgs.TransactionName;
+
+        Collection<SvnChangedEventArgs> list;
+        Assert.That(lc.GetChanged(e.HookArgs.LookOrigin, ca, out list));
+        Assert.That(list.Count, Is.EqualTo(2));
+
+        Assert.That(list[0].Name, Is.EqualTo("d"));
+        Assert.That(list[0].Path, Is.EqualTo("/d/"));
+        Assert.That(list[0].CopyFromPath, Is.EqualTo("/a/b/c/d"));
+        Assert.That(list[0].CopyFromRevision, Is.EqualTo(1L));
+        Assert.That(list[1].Name, Is.EqualTo("j"));
+        Assert.That(list[1].Path, Is.EqualTo("/j/"));
+        Assert.That(list[1].CopyFromPath, Is.EqualTo("/i/j"));
+        Assert.That(list[1].CopyFromRevision, Is.EqualTo(1L));
+    }
+
+    [TestMethod]
+    [DoNotParallelize]
+    public void PostCommitErrorTest()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri uri = sbox.CreateRepository(SandBoxRepository.Empty);
+        using (InstallHook(uri, SvnHookType.PostCommit, OnPostCommit))
         {
-            using (SvnLookClient lc = new SvnLookClient())
-            {
-                SvnChangedArgs ca = new SvnChangedArgs();
-                ca.Transaction = e.HookArgs.TransactionName;
+            using SvnClient cl = new SvnClient();
+            SvnCommitResult cr;
+            SvnCreateDirectoryArgs da = new SvnCreateDirectoryArgs();
+            da.CreateParents = true;
+            da.LogMessage = "Created!";
+            cl.RemoteCreateDirectory(new Uri(uri, "a/b/c/d/e/f"), da, out cr);
 
-                Collection<SvnChangedEventArgs> list;
-                Assert.That(lc.GetChanged(e.HookArgs.LookOrigin, ca, out list));
-
-                Assert.That(list.Count, Is.EqualTo(16));
-                Assert.That(list[0].Name, Is.EqualTo("a"));
-                Assert.That(list[0].Path, Is.EqualTo("/a/"));
-                Assert.That(list[1].Name, Is.EqualTo("b"));
-                Assert.That(list[1].Path, Is.EqualTo("/a/b/"));
-                Assert.That(list[2].Name, Is.EqualTo("c"));
-                Assert.That(list[2].Path, Is.EqualTo("/a/b/c/"));
-            }
+            Assert.That(cr, Is.Not.Null);
+            Assert.AreNotEqual(null, cr.PostCommitError);
+            Console.WriteLine(cr.PostCommitError);
+            Assert.That(cr.PostCommitError.Contains(Environment.NewLine));
+            Assert.That(cr.PostCommitError.Substring(
+                                            cr.PostCommitError.IndexOf(Environment.NewLine, StringComparison.OrdinalIgnoreCase)
+                                            + Environment.NewLine.Length),
+                                    Is.EqualTo("The Post Commit Warning"));
         }
+    }
 
-        private void OnCopyDir(object sender, ReposHookEventArgs e)
-        {
-            using (SvnLookClient lc = new SvnLookClient())
-            {
-                SvnChangedArgs ca = new SvnChangedArgs();
-                ca.Transaction = e.HookArgs.TransactionName;
-
-                Collection<SvnChangedEventArgs> list;
-                Assert.That(lc.GetChanged(e.HookArgs.LookOrigin, ca, out list));
-                Assert.That(list.Count, Is.EqualTo(2));
-
-                Assert.That(list[0].Name, Is.EqualTo("d"));
-                Assert.That(list[0].Path, Is.EqualTo("/d/"));
-                Assert.That(list[0].CopyFromPath, Is.EqualTo("/a/b/c/d"));
-                Assert.That(list[0].CopyFromRevision, Is.EqualTo(1L));
-                Assert.That(list[1].Name, Is.EqualTo("j"));
-                Assert.That(list[1].Path, Is.EqualTo("/j/"));
-                Assert.That(list[1].CopyFromPath, Is.EqualTo("/i/j"));
-                Assert.That(list[1].CopyFromRevision, Is.EqualTo(1L));
-            }
-        }
-
-        [TestMethod]
-        [DoNotParallelize]
-        public void PostCommitErrorTest()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri uri = sbox.CreateRepository(SandBoxRepository.Empty);
-            using (InstallHook(uri, SvnHookType.PostCommit, OnPostCommit))
-            {
-                using (SvnClient cl = new SvnClient())
-                {
-                    SvnCommitResult cr;
-                    SvnCreateDirectoryArgs da = new SvnCreateDirectoryArgs();
-                    da.CreateParents = true;
-                    da.LogMessage = "Created!";
-                    cl.RemoteCreateDirectory(new Uri(uri, "a/b/c/d/e/f"), da, out cr);
-
-                    Assert.That(cr, Is.Not.Null);
-                    Assert.AreNotEqual(null, cr.PostCommitError);
-                    Console.WriteLine(cr.PostCommitError);
-                    Assert.That(cr.PostCommitError.Contains(Environment.NewLine));
-                    Assert.That(cr.PostCommitError.Substring(
-                                                    cr.PostCommitError.IndexOf(Environment.NewLine, StringComparison.OrdinalIgnoreCase)
-                                                    + Environment.NewLine.Length),
-                                            Is.EqualTo("The Post Commit Warning"));
-                }
-            }
-        }
-
-        private void OnPostCommit(object sender, ReposHookEventArgs e)
-        {
-            e.ErrorText = "The Post Commit Warning";
-            e.ExitCode = 1;
-        }
+    private void OnPostCommit(object sender, ReposHookEventArgs e)
+    {
+        e.ErrorText = "The Post Commit Warning";
+        e.ExitCode = 1;
     }
 }

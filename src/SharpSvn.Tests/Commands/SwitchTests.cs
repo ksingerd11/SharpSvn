@@ -25,68 +25,67 @@ using SharpSvn.TestBuilder;
 
 using SharpSvn;
 
-namespace SharpSvn.Tests.Commands
+namespace SharpSvn.Tests.Commands;
+
+///<summary>
+///Test Client::Switc
+///</summary>
+[TestClass]
+public class SwitchTests : TestBase
 {
-    ///<summary>
-    ///Test Client::Switc
-    ///</summary>
-    [TestClass]
-    public class SwitchTests : TestBase
+    [TestInitialize]
+    public void SwitchSetUp()
     {
-        [TestInitialize]
-        public void SwitchSetUp()
-        {
-            this.path = Path.GetTempPath();
-        }
-
-        [TestMethod]
-        public void PegTests()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            Uri CollabReposUri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
-
-            string dir = sbox.Wc;
-
-            SvnUpdateResult result;
-            Assert.That(Client.CheckOut(new SvnUriTarget(new Uri(CollabReposUri, "trunk")), dir, out result));
-
-            long head = result.Revision;
-            Assert.That(result.Revision, Is.EqualTo(head));
-
-            Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/a")), out result));
-            Assert.That(result.Revision, Is.EqualTo(head));
-
-            Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/c"), head - 3), out result));
-            Assert.That(result.Revision, Is.EqualTo(head - 3));
-
-            SvnSwitchArgs sa = new SvnSwitchArgs();
-            sa.Revision = head - 4;
-            Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/b"), head - 5), sa, out result));
-            Assert.That(result.Revision, Is.EqualTo(head - 4));
-
-            sa = new SvnSwitchArgs();
-            sa.Revision = head - 7;
-            Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/a")), sa, out result));
-            Assert.That(result.Revision, Is.EqualTo(head - 7));
-        }
-
-        /// <summary>
-        /// Try to switch wc to repos/doc
-        /// </summary>
-        [TestMethod]
-        public void TestSwitchUrl()
-        {
-            SvnSandBox sbox = new SvnSandBox(this);
-            sbox.Create(SandBoxRepository.AnkhSvnCases);
-            string WcPath = sbox.Wc;
-
-            Uri switchUrl = new Uri(sbox.RepositoryUri, "trunk/doc");
-            string checkFile = Path.Combine(WcPath, "text_r5.txt");
-
-            this.Client.Switch(WcPath, switchUrl);
-            Assert.That(File.Exists(checkFile), "Didn't switch to repos/doc");
-
-        }
-        private string path;
+        this.path = Path.GetTempPath();
     }
+
+    [TestMethod]
+    public void PegTests()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        Uri CollabReposUri = sbox.CreateRepository(SandBoxRepository.MergeScenario);
+
+        string dir = sbox.Wc;
+
+        SvnUpdateResult result;
+        Assert.That(Client.CheckOut(new SvnUriTarget(new Uri(CollabReposUri, "trunk")), dir, out result));
+
+        long head = result.Revision;
+        Assert.That(result.Revision, Is.EqualTo(head));
+
+        Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/a")), out result));
+        Assert.That(result.Revision, Is.EqualTo(head));
+
+        Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/c"), head - 3), out result));
+        Assert.That(result.Revision, Is.EqualTo(head - 3));
+
+        SvnSwitchArgs sa = new SvnSwitchArgs();
+        sa.Revision = head - 4;
+        Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/b"), head - 5), sa, out result));
+        Assert.That(result.Revision, Is.EqualTo(head - 4));
+
+        sa = new SvnSwitchArgs();
+        sa.Revision = head - 7;
+        Assert.That(Client.Switch(dir, new SvnUriTarget(new Uri(CollabReposUri, "branches/a")), sa, out result));
+        Assert.That(result.Revision, Is.EqualTo(head - 7));
+    }
+
+    /// <summary>
+    /// Try to switch wc to repos/doc
+    /// </summary>
+    [TestMethod]
+    public void TestSwitchUrl()
+    {
+        SvnSandBox sbox = new SvnSandBox(this);
+        sbox.Create(SandBoxRepository.AnkhSvnCases);
+        string WcPath = sbox.Wc;
+
+        Uri switchUrl = new Uri(sbox.RepositoryUri, "trunk/doc");
+        string checkFile = Path.Combine(WcPath, "text_r5.txt");
+
+        this.Client.Switch(WcPath, switchUrl);
+        Assert.That(File.Exists(checkFile), "Didn't switch to repos/doc");
+
+    }
+    private string path;
 }
